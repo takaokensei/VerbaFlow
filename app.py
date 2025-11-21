@@ -408,33 +408,59 @@ if data_source == "20 Newsgroups (Amostras)":
                 
                 # Extrair categoria com parsing robusto
                 result_str = str(result)
+                predicted_category = ""
+                classification_data = None
                 
-                # Tentar extrair da task de classificação primeiro (mais confiável)
-                # O resultado do crew pode conter múltiplas tasks, vamos procurar em todas
-                predicted_category = extract_category_robust(result_str)
+                # Tentar parsear JSON estruturado primeiro (método preferido)
+                try:
+                    # Procurar por JSON no resultado (pode estar em qualquer lugar do texto)
+                    json_patterns = [
+                        r'\{[^{}]*"final_category"[^{}]*"confidence"[^{}]*\}',  # JSON com final_category e confidence
+                        r'\{[^{}]*"final_category"[^{}]*\}',  # JSON com final_category
+                        r'\{.*?"entity_analysis".*?"final_category".*?\}',  # JSON completo
+                    ]
+                    
+                    for pattern in json_patterns:
+                        json_match = re.search(pattern, result_str, re.DOTALL | re.IGNORECASE)
+                        if json_match:
+                            json_str = json_match.group(0)
+                            try:
+                                data = json.loads(json_str)
+                                if 'final_category' in data:
+                                    predicted_category = data['final_category']
+                                    classification_data = data
+                                    break
+                            except json.JSONDecodeError:
+                                continue
+                except Exception:
+                    # Se falhar, continuar com parsing tradicional
+                    pass
                 
-                # Se não encontrou, tentar buscar no output da task1 diretamente
-                if not predicted_category and hasattr(result, 'tasks_output'):
-                    for task_output in result.tasks_output:
-                        predicted_category = extract_category_robust(str(task_output))
-                        if predicted_category:
-                            break
-                
-                # Se ainda não encontrou, buscar no texto completo com padrões mais flexíveis
+                # Fallback: parsing robusto tradicional
                 if not predicted_category:
-                    # Procurar por padrões como "talk.politics.misc" ou "sci.space" diretamente no texto
-                    category_pattern = r'\b(' + '|'.join([
-                        'alt\.atheism', 'comp\.graphics', 'comp\.os\.ms-windows\.misc',
-                        'comp\.sys\.ibm\.pc\.hardware', 'comp\.sys\.mac\.hardware', 'comp\.windows\.x',
-                        'misc\.forsale', 'rec\.autos', 'rec\.motorcycles',
-                        'rec\.sport\.baseball', 'rec\.sport\.hockey', 'sci\.crypt',
-                        'sci\.electronics', 'sci\.med', 'sci\.space',
-                        'soc\.religion\.christian', 'talk\.politics\.guns',
-                        'talk\.politics\.mideast', 'talk\.politics\.misc', 'talk\.religion\.misc'
-                    ]) + r')\b'
-                    match = re.search(category_pattern, result_str, re.IGNORECASE)
-                    if match:
-                        predicted_category = match.group(1)
+                    predicted_category = extract_category_robust(result_str)
+                    
+                    # Se não encontrou, tentar buscar no output da task1 diretamente
+                    if not predicted_category and hasattr(result, 'tasks_output'):
+                        for task_output in result.tasks_output:
+                            predicted_category = extract_category_robust(str(task_output))
+                            if predicted_category:
+                                break
+                    
+                    # Se ainda não encontrou, buscar no texto completo com padrões mais flexíveis
+                    if not predicted_category:
+                        category_pattern = r'\b(' + '|'.join([
+                            'alt\.atheism', 'comp\.graphics', 'comp\.os\.ms-windows\.misc',
+                            'comp\.sys\.ibm\.pc\.hardware', 'comp\.sys\.mac\.hardware', 'comp\.windows\.x',
+                            'misc\.forsale', 'rec\.autos', 'rec\.motorcycles',
+                            'rec\.sport\.baseball', 'rec\.sport\.hockey', 'sci\.crypt',
+                            'sci\.electronics', 'sci\.med', 'sci\.space',
+                            'soc\.religion\.christian', 'talk\.politics\.guns',
+                            'talk\.politics\.mideast', 'talk\.politics\.misc', 'talk\.religion\.misc'
+                        ]) + r')\b'
+                        match = re.search(category_pattern, result_str, re.IGNORECASE)
+                        if match:
+                            predicted_category = match.group(1)
                 
                 # Layout de duas colunas para resultados
                 st.markdown("---")
