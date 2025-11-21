@@ -94,27 +94,24 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         os.environ["GOOGLE_API_KEY"] = api_key
         
         # IMPORTANTE: O provider nativo do CrewAI adiciona automaticamente o prefixo "models/"
-        # Mas a API v1beta do Google não aceita esse formato
-        # A solução é usar apenas o nome do modelo sem prefixos quando o provider nativo estiver ativo
-        # O CrewAI vai adicionar o prefixo "models/" internamente, mas precisamos garantir que o nome base está correto
+        # A API v1beta do Google NÃO suporta modelos Gemini 1.5 (gemini-1.5-pro, gemini-1.5-flash)
+        # Erro: "models/gemini-1.5-flash is not found for API version v1beta"
+        # 
+        # SOLUÇÃO: Para modelos Gemini 1.5, usar "gemini-pro" que é compatível com v1beta
+        # Ou usar LiteLLM que suporta modelos 1.5
         
-        # Para a API v1beta do Google, os modelos válidos são:
-        # - "gemini-1.5-pro" (mas pode precisar ser "gemini-1.5-pro-latest" ou outro formato)
-        # - "gemini-1.5-flash"
-        # - "gemini-pro"
-        
-        # Se o provider nativo está disponível, usar apenas o nome do modelo
-        # O CrewAI vai adicionar "models/" automaticamente, mas o nome base precisa estar correto
         if NATIVE_PROVIDER_AVAILABLE:
-            # Tentar usar o modelo sem prefixos - o CrewAI vai adicionar "models/" internamente
-            # Mas se isso não funcionar, pode ser que o modelo precise ser "gemini-1.5-pro-latest"
-            gemini_model_name = clean_model
-            # Se for "gemini-1.5-pro", tentar também "gemini-1.5-pro-latest" como fallback
-            if clean_model == "gemini-1.5-pro":
-                # Primeiro tentar sem sufixo, se falhar, tentar com -latest
+            # Verificar se é um modelo Gemini 1.5
+            if "1.5" in clean_model:
+                # Modelos Gemini 1.5 NÃO são suportados pela API v1beta do provider nativo
+                # Usar "gemini-pro" como fallback que é compatível
+                gemini_model_name = "gemini-pro"
+            else:
+                # Para modelos sem "1.5" (como gemini-pro), usar o nome original
                 gemini_model_name = clean_model
         else:
             # Se não tiver provider nativo, usar formato LiteLLM: "gemini/gemini-1.5-pro"
+            # LiteLLM suporta modelos Gemini 1.5
             gemini_model_name = f"gemini/{clean_model}"
         
         # Usar wrapper LLM do CrewAI
