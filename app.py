@@ -192,10 +192,16 @@ with st.sidebar:
     
     if st.session_state['execution_history']:
         for i, hist_item in enumerate(reversed(st.session_state['execution_history'][-5:]), 1):
-            with st.expander(f"Execução {i}: {hist_item.get('category', 'N/A')} - {hist_item.get('timestamp', '')[:16]}", expanded=False):
-                st.write(f"**Categoria:** {hist_item.get('category', 'N/A')}")
-                st.write(f"**Status:** {'✅ Correto' if hist_item.get('correct', False) else '❌ Incorreto'}")
-                if st.button(f"Ver detalhes", key=f"hist_{i}"):
+            category = hist_item.get('predicted', hist_item.get('category', 'N/A'))
+            timestamp = hist_item.get('timestamp', '')[:16] if hist_item.get('timestamp') else 'Sem data'
+            is_correct = hist_item.get('is_correct', hist_item.get('correct', False))
+            
+            with st.expander(f"Execução {i}: {category} - {timestamp}", expanded=False):
+                st.write(f"**Categoria Real:** {hist_item.get('ground_truth', 'N/A')}")
+                st.write(f"**Categoria Prevista:** {category}")
+                st.write(f"**Status:** {'✅ Correto' if is_correct else '❌ Incorreto'}")
+                st.write(f"**Provider:** {hist_item.get('llm_provider', 'N/A')}")
+                if st.button(f"Ver detalhes completos", key=f"hist_{i}"):
                     st.session_state['view_history_item'] = hist_item
     else:
         st.info("Nenhuma execução ainda. Execute uma classificação para ver o histórico.")
@@ -274,16 +280,21 @@ if data_source == "20 Newsgroups (Amostras)":
                             original_openai_key = os.environ.pop("OPENAI_API_KEY", None)
                         
                         selected_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                        llm_provider = "Groq"  # Inicializar variável
+                        
                         try:
                             llm = get_llm_with_fallback(model_name=selected_model)
                             llm_provider = "Groq"
                         except Exception as e:
                             # Tentar Gemini como fallback
                             config = get_config()
-                            if config.use_gemini_fallback and config.google_api_key:
-                                llm = get_llm(provider="gemini")
-                                llm_provider = "Gemini (Fallback)"
-                                status.update(label=f"⚠️ Groq falhou, usando {llm_provider}...", state="running")
+                            if config.use_gemini_fallback and (config.google_api_key or os.getenv("GOOGLE_API_KEY")):
+                                try:
+                                    llm = get_llm(provider="gemini")
+                                    llm_provider = "Gemini (Fallback)"
+                                    status.update(label=f"⚠️ Groq falhou, usando {llm_provider}...", state="running")
+                                except Exception as gemini_error:
+                                    raise ValueError(f"Falha no Groq: {e}. Falha no Gemini: {gemini_error}")
                             else:
                                 raise
                         
@@ -299,14 +310,15 @@ if data_source == "20 Newsgroups (Amostras)":
                         few_shot_examples = []
                         if 'execution_history' in st.session_state and st.session_state['execution_history']:
                             for hist in st.session_state['execution_history'][-3:]:  # Últimos 3
-                                if 'text_sample' in hist and 'category' in hist:
+                                category = hist.get('predicted') or hist.get('category')
+                                if 'text_sample' in hist and category:
                                     few_shot_examples.append({
                                         'text': hist['text_sample'],
-                                        'category': hist['category'],
-                                        'reasoning': hist.get('reasoning', '')
+                                        'category': category,
+                                        'reasoning': hist.get('reasoning', f"Classificado como {category}")
                                     })
                         
-                        task1 = create_classification_task(analyst, cleaned_text, few_shot_examples)
+                        task1 = create_classification_task(analyst, cleaned_text, few_shot_examples if few_shot_examples else None)
                         task2 = create_enrichment_task(researcher, task1)
                         task3 = create_reporting_task(editor, task1, task2)
                         
