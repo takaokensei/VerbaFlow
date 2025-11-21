@@ -449,13 +449,32 @@ if data_source == "20 Newsgroups (Amostras)":
                 </details>
                 """, unsafe_allow_html=True)
                 
-                # Salvar resultado na sessão
-                st.session_state['last_result'] = {
+                # Salvar resultado na sessão e histórico
+                from datetime import datetime
+                execution_record = {
+                    'timestamp': datetime.now().isoformat(),
                     'ground_truth': ground_truth,
                     'predicted': predicted_category,
                     'is_correct': is_correct,
-                    'report': result_str
+                    'report': result_str,
+                    'text_sample': raw_text[:200],  # Primeiros 200 caracteres
+                    'llm_provider': llm_provider if 'llm_provider' in locals() else "Groq",
+                    'classification_data': classification_data if 'classification_data' in locals() else None
                 }
+                
+                st.session_state['last_result'] = execution_record
+                
+                # Adicionar ao histórico
+                if 'execution_history' not in st.session_state:
+                    st.session_state['execution_history'] = []
+                
+                st.session_state['execution_history'].append(execution_record)
+                
+                # Manter apenas os últimos N itens
+                config = get_config()
+                max_items = config.max_history_items
+                if len(st.session_state['execution_history']) > max_items:
+                    st.session_state['execution_history'] = st.session_state['execution_history'][-max_items:]
 
 else:  # CSV Customizado
     st.subheader("📊 CSV Customizado (6 Classes)")
