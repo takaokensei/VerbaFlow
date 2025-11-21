@@ -453,18 +453,52 @@ if data_source == "20 Newsgroups (Amostras)":
                                         st.balloons()
                                         
                                     except Exception as gemini_error:
-                                        st.error(f"""
-                                        ## ❌ Fallback Gemini também falhou
+                                        error_str = str(gemini_error).lower()
+                                        is_provider_error = (
+                                            "google-genai" in error_str or 
+                                            "native provider" in error_str or
+                                            "provider not available" in error_str
+                                        )
                                         
-                                        **Erro do Groq:** {crew_error}
-                                        
-                                        **Erro do Gemini:** {gemini_error}
-                                        
-                                        💡 **Sugestões:**
-                                        1. Verifique se a chave do Gemini está correta
-                                        2. Aguarde alguns minutos e tente novamente
-                                        3. Verifique se o pacote `langchain-google-genai` está instalado
-                                        """)
+                                        if is_provider_error:
+                                            st.error(f"""
+                                            ## ❌ Fallback Gemini: Provider Nativo Não Instalado
+                                            
+                                            **Erro do Groq:** {crew_error}
+                                            
+                                            **Erro do Gemini:** {gemini_error}
+                                            
+                                            🔧 **Solução:**
+                                            
+                                            O provider nativo do Gemini não está instalado. Para ativar o fallback automático:
+                                            
+                                            **Opção 1 (Recomendada):** Execute o script de instalação:
+                                            ```bash
+                                            python install_gemini_provider.py
+                                            ```
+                                            
+                                            **Opção 2:** Instale manualmente:
+                                            ```bash
+                                            pip install 'crewai[google-genai]'
+                                            ```
+                                            
+                                            **Alternativas:**
+                                            - Aguarde o reset do rate limit do Groq (~12 minutos)
+                                            - Use um modelo menor do Groq (llama-3.1-8b-instant) que consome menos tokens
+                                            """)
+                                        else:
+                                            st.error(f"""
+                                            ## ❌ Fallback Gemini também falhou
+                                            
+                                            **Erro do Groq:** {crew_error}
+                                            
+                                            **Erro do Gemini:** {gemini_error}
+                                            
+                                            💡 **Sugestões:**
+                                            1. Verifique se a chave do Gemini está correta
+                                            2. Aguarde alguns minutos e tente novamente
+                                            3. Verifique se o pacote `langchain-google-genai` está instalado
+                                            """)
                                         status.update(label=f"❌ Erro: Fallback falhou", state="error")
                                         with st.expander("🔍 Detalhes do Erro"):
                                             st.exception(gemini_error)
