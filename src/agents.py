@@ -75,40 +75,41 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         
         model = model_name or config.gemini_model
         
-        # Normalizar o nome do modelo para ChatGoogleGenerativeAI
-        # Remover prefixos se presentes
-        if model.startswith("gemini/"):
-            model = model.replace("gemini/", "")
-        elif model.startswith("models/"):
-            model = model.replace("models/", "")
-        
-        # PROBLEMA: O CrewAI Agent tenta converter LangChain LLMs internamente
-        # Quando detecta ChatGoogleGenerativeAI, tenta usar provider nativo que não está instalado
-        # Quando usa LiteLLM, passa formato errado: "models/gemini-1.5-pro" em vez de "gemini/gemini-1.5-pro"
-        # 
-        # SOLUÇÃO: Usar o wrapper LLM do CrewAI com formato LiteLLM correto
-        # O formato "gemini/<modelo>" faz o CrewAI usar LiteLLM diretamente
-        
-        # Definir a chave do Google como variável de ambiente para LiteLLM
-        os.environ["GEMINI_API_KEY"] = api_key
-        os.environ["GOOGLE_API_KEY"] = api_key
-        
-        # Normalizar modelo (remover prefixos se presentes)
+        # Normalizar o nome do modelo (remover prefixos se presentes)
         clean_model = model
         if clean_model.startswith("gemini/"):
             clean_model = clean_model.replace("gemini/", "")
         elif clean_model.startswith("models/"):
             clean_model = clean_model.replace("models/", "")
         
-        # Usar formato LiteLLM correto: "gemini/gemini-1.5-pro"
-        gemini_model_name = f"gemini/{clean_model}"
-        
-        # Usar wrapper LLM do CrewAI que vai usar LiteLLM
-        # O LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
+        # Verificar se o provider nativo está instalado
         try:
-            # Tentar criar LLM com formato LiteLLM
+            from crewai.llms.providers.gemini.completion import GeminiCompletion
+            NATIVE_PROVIDER_AVAILABLE = True
+        except ImportError:
+            NATIVE_PROVIDER_AVAILABLE = False
+        
+        # Definir a chave do Google como variável de ambiente
+        os.environ["GEMINI_API_KEY"] = api_key
+        os.environ["GOOGLE_API_KEY"] = api_key
+        
+        # Se o provider nativo está disponível, usar formato correto para ele
+        # O provider nativo do CrewAI espera apenas o nome do modelo sem prefixos
+        # Mas precisa ser um modelo válido para a API v1beta do Google
+        if NATIVE_PROVIDER_AVAILABLE:
+            # Para o provider nativo, usar apenas o nome do modelo
+            # Mas verificar se é um modelo válido para v1beta
+            # Modelos válidos: "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"
+            # Se o modelo for "gemini-1.5-pro", pode precisar ser "gemini-1.5-pro-latest" ou apenas o nome
+            gemini_model_name = clean_model
+        else:
+            # Se não tiver provider nativo, usar formato LiteLLM: "gemini/gemini-1.5-pro"
+            gemini_model_name = f"gemini/{clean_model}"
+        
+        # Usar wrapper LLM do CrewAI
+        try:
             gemini_llm = LLM(
-                model=gemini_model_name,  # Formato LiteLLM: "gemini/gemini-1.5-pro"
+                model=gemini_model_name,
                 api_key=api_key,
                 temperature=config.temperature
             )
