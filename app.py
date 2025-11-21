@@ -118,6 +118,11 @@ if data_source == "20 Newsgroups (Amostras)":
                         # Limpar texto
                         cleaned_text = clean_text(raw_text)
                         
+                        # Configurar variável de ambiente dummy para OpenAI
+                        # (CrewAI tenta importar OpenAI mesmo quando usamos LLM customizado)
+                        if "OPENAI_API_KEY" not in os.environ:
+                            os.environ["OPENAI_API_KEY"] = "dummy-key-to-prevent-openai-import-error"
+                        
                         # Criar agentes
                         llm = get_llm()
                         analyst = create_analyst_agent(llm)
@@ -129,12 +134,13 @@ if data_source == "20 Newsgroups (Amostras)":
                         task2 = create_enrichment_task(researcher, task1)
                         task3 = create_reporting_task(editor, task1, task2)
                         
-                        # Criar crew
+                        # Criar crew com LLM configurado explicitamente
                         crew = Crew(
                             agents=[analyst, researcher, editor],
                             tasks=[task1, task2, task3],
                             process=Process.sequential,
-                            verbose=True
+                            verbose=True,
+                            llm=llm  # Especificar LLM explicitamente para evitar uso de OpenAI
                         )
                         
                         # Executar
