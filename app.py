@@ -121,19 +121,36 @@ with st.sidebar:
     # Carregar valores do .env como valores padrão
     groq_key_env = os.getenv("GROQ_API_KEY", "")
     tavily_key_env = os.getenv("TAVILY_API_KEY", "")
+    google_key_env = os.getenv("GOOGLE_API_KEY", "")
     
     groq_key = st.text_input(
         "Groq API Key",
         value=groq_key_env if groq_key_env else "",
         type="password",
-        help="Chave de API do Groq. Se deixar vazio, usa o valor do arquivo .env"
+        help="Chave de API do Groq (obrigatória). Se deixar vazio, usa o valor do arquivo .env"
     )
     
     tavily_key = st.text_input(
         "Tavily API Key",
         value=tavily_key_env if tavily_key_env else "",
         type="password",
-        help="Chave de API do Tavily. Se deixar vazio, usa o valor do arquivo .env"
+        help="Chave de API do Tavily (obrigatória para enriquecimento). Se deixar vazio, usa o valor do arquivo .env"
+    )
+    
+    st.markdown("---")
+    st.markdown("### 🔄 Fallback (Opcional)")
+    
+    google_key = st.text_input(
+        "Google API Key (Gemini Fallback)",
+        value=google_key_env if google_key_env else "",
+        type="password",
+        help="Chave de API do Google para Gemini (opcional). Usada como fallback se Groq falhar. Obtenha em: https://makersuite.google.com/app/apikey"
+    )
+    
+    use_fallback = st.checkbox(
+        "Usar Gemini como fallback automático",
+        value=os.getenv("USE_GEMINI_FALLBACK", "true").lower() == "true",
+        help="Se marcado, usa Gemini automaticamente se Groq falhar (rate limit, erro, etc.)"
     )
     
     st.markdown("---")
@@ -169,10 +186,18 @@ with st.sidebar:
     elif tavily_key_env:
         os.environ["TAVILY_API_KEY"] = tavily_key_env
     
+    if google_key:
+        os.environ["GOOGLE_API_KEY"] = google_key
+    elif google_key_env:
+        os.environ["GOOGLE_API_KEY"] = google_key_env
+    
     os.environ["GROQ_MODEL"] = selected_model
+    os.environ["USE_GEMINI_FALLBACK"] = str(use_fallback).lower()
     
     # Mostrar status das chaves
     st.markdown("---")
+    st.markdown("### ✅ Status das Configurações")
+    
     if groq_key_env or groq_key:
         st.success("✅ Groq API Key configurada")
     else:
@@ -182,6 +207,15 @@ with st.sidebar:
         st.success("✅ Tavily API Key configurada")
     else:
         st.info("ℹ️ Tavily API Key opcional (enriquecimento não funcionará sem ela)")
+    
+    if (google_key_env or google_key) and use_fallback:
+        st.success("✅ Gemini Fallback configurado e ativado")
+    elif use_fallback and not (google_key_env or google_key):
+        st.warning("⚠️ Fallback ativado mas Google API Key não encontrada")
+    elif google_key_env or google_key:
+        st.info("ℹ️ Google API Key configurada mas fallback desativado")
+    else:
+        st.info("ℹ️ Gemini Fallback não configurado (opcional)")
     
     # Histórico de execuções
     st.markdown("---")
