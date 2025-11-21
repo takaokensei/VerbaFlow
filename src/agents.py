@@ -65,8 +65,8 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         )
     
     elif provider == "gemini":
-        if not GEMINI_AVAILABLE:
-            raise ValueError("Gemini não está disponível. Instale: pip install langchain-google-genai")
+        if not LITELLM_AVAILABLE:
+            raise ValueError("LiteLLM não está disponível. Instale: pip install litellm")
         
         # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
         api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -75,25 +75,46 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         
         model = model_name or config.gemini_model
         
-        # CrewAI usa LiteLLM internamente, que suporta Gemini
-        # LiteLLM usa o formato: "gemini/<modelo>" e busca GEMINI_API_KEY automaticamente
         # Definir a chave do Google como variável de ambiente para LiteLLM
         os.environ["GEMINI_API_KEY"] = api_key
         os.environ["GOOGLE_API_KEY"] = api_key
         
-        # Usar LLM do CrewAI com modelo Gemini via LiteLLM
-        # Formato: "gemini/<modelo>" para usar Gemini via LiteLLM
-        # Exemplo: "gemini/gemini-1.5-pro" ou "gemini/gemini-pro"
+        # IMPORTANTE: O CrewAI tenta usar o provider nativo do Gemini primeiro
+        # Para forçar o uso do LiteLLM, precisamos usar um formato que o CrewAI não reconheça como nativo
+        # Solução: Usar formato LiteLLM com prefixo explícito que força LiteLLM
+        # Formato: "gemini/<modelo>" - mas o CrewAI ainda tenta o provider nativo primeiro
+        # Alternativa: Usar um nome de modelo que force LiteLLM diretamente
+        
+        # Tentar usar formato que força LiteLLM
+        # O LiteLLM aceita "gemini/gemini-1.5-pro" ou apenas "gemini-1.5-pro" com GEMINI_API_KEY
         gemini_model_name = f"gemini/{model}" if not model.startswith("gemini/") else model
         
-        # O CrewAI LLM vai usar LiteLLM internamente quando o modelo começa com "gemini/"
-        # LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
-        # O formato "gemini/<modelo>" força o uso do LiteLLM em vez do provider nativo
-        return LLM(
-            model=gemini_model_name,
-            api_key=api_key,
-            temperature=config.temperature
-        )
+        # O problema: CrewAI detecta "gemini" e tenta usar provider nativo
+        # Solução: Usar LangChain LLM diretamente em vez do CrewAI LLM wrapper
+        # Mas o CrewAI precisa do seu próprio LLM wrapper...
+        
+        # Tentar criar LLM do CrewAI - se falhar com provider nativo, o erro será claro
+        try:
+            return LLM(
+                model=gemini_model_name,
+                api_key=api_key,
+                temperature=config.temperature
+            )
+        except ImportError as e:
+            if "google-genai" in str(e).lower() or "gemini" in str(e).lower():
+                # Provider nativo não disponível - mas o CrewAI deveria usar LiteLLM como fallback
+                # O problema é que o CrewAI tenta o provider nativo ANTES do LiteLLM
+                raise ValueError(
+                    f"O CrewAI está tentando usar o provider nativo do Gemini, mas ele não está instalado. "
+                    f"O CrewAI deveria usar o LiteLLM automaticamente quando o provider nativo falha, "
+                    f"mas isso não está funcionando. "
+                    f"\n\nSoluções possíveis:\n"
+                    f"1. Instale o provider nativo: pip install 'crewai[google-genai]' (pode falhar)\n"
+                    f"2. Use uma versão do CrewAI que suporte LiteLLM como fallback automático\n"
+                    f"3. Aguarde o reset do rate limit do Groq\n"
+                    f"\nErro original: {e}"
+                )
+            raise
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
