@@ -106,24 +106,47 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         # Usar wrapper LLM do CrewAI que vai usar LiteLLM
         # O LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
         try:
-            return LLM(
+            # Tentar criar LLM com formato LiteLLM
+            gemini_llm = LLM(
                 model=gemini_model_name,  # Formato LiteLLM: "gemini/gemini-1.5-pro"
                 api_key=api_key,
                 temperature=config.temperature
             )
-        except ImportError as e:
-            # Se o provider nativo tentar ser usado, dar erro claro
-            if "google-genai" in str(e).lower() or "gemini" in str(e).lower():
-                raise ValueError(
-                    f"O CrewAI está tentando usar o provider nativo do Gemini, mas ele não está instalado. "
-                    f"O formato 'gemini/{clean_model}' deveria forçar o uso do LiteLLM, mas o CrewAI "
-                    f"ainda está tentando o provider nativo primeiro.\n\n"
-                    f"**Soluções:**\n"
-                    f"1. Instale o provider nativo: pip install 'crewai[google-genai]' (pode falhar)\n"
-                    f"2. Aguarde o reset do rate limit do Groq (~{12} minutos)\n"
-                    f"3. Use um modelo menor do Groq (llama-3.1-8b-instant) que consome menos tokens\n\n"
-                    f"Erro original: {e}"
-                )
+            return gemini_llm
+        except (ImportError, ValueError, Exception) as e:
+            error_str = str(e).lower()
+            # Se o provider nativo tentar ser usado, tentar instalar ou dar erro claro
+            if "google-genai" in error_str or "gemini" in error_str or "native provider" in error_str:
+                # Tentar importar o provider nativo para ver se está disponível
+                try:
+                    from crewai.llms.providers.gemini.completion import GeminiCompletion
+                    # Se chegou aqui, o provider nativo está disponível, mas houve outro erro
+                    raise ValueError(
+                        f"Erro ao configurar Gemini com provider nativo: {e}\n\n"
+                        f"**Tente:**\n"
+                        f"1. Verifique se a chave API está correta\n"
+                        f"2. Aguarde o reset do rate limit do Groq\n"
+                        f"3. Use um modelo menor do Groq (llama-3.1-8b-instant)\n"
+                    )
+                except ImportError:
+                    # Provider nativo não está instalado
+                    raise ValueError(
+                        f"❌ **Provider nativo do Gemini não está instalado**\n\n"
+                        f"O CrewAI está tentando usar o provider nativo do Gemini, mas ele não está instalado.\n"
+                        f"O formato 'gemini/{clean_model}' deveria forçar o uso do LiteLLM, mas o CrewAI "
+                        f"ainda está tentando o provider nativo primeiro.\n\n"
+                        f"**🔧 Soluções:**\n\n"
+                        f"**Opção 1 (Recomendada):** Instale o provider nativo:\n"
+                        f"```bash\n"
+                        f"pip install 'crewai[google-genai]'\n"
+                        f"```\n\n"
+                        f"**Opção 2:** Aguarde o reset do rate limit do Groq (~12 minutos)\n\n"
+                        f"**Opção 3:** Use um modelo menor do Groq que consome menos tokens:\n"
+                        f"- `llama-3.1-8b-instant` (mais rápido, menos tokens)\n"
+                        f"- `mixtral-8x7b-32768` (alternativa)\n\n"
+                        f"**Erro original:** {e}"
+                    )
+            # Re-raise outros erros
             raise
     
     else:

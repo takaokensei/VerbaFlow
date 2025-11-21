@@ -33,4 +33,7 @@ pydantic-settings>=2.0.0
 langchain-google-genai>=0.0.6
 google-generativeai>=0.3.0
 litellm>=1.0.0  # Necessário para CrewAI suportar Gemini
+# Provider nativo do Gemini para CrewAI (opcional, mas recomendado para fallback)
+# Instale com: pip install 'crewai[google-genai]' ou descomente a linha abaixo:
+# crewai[google-genai]>=0.1.0
 
