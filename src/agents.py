@@ -17,6 +17,13 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
+# Import LiteLLM para usar diretamente
+try:
+    from litellm import completion
+    LITELLM_AVAILABLE = True
+except ImportError:
+    LITELLM_AVAILABLE = False
+
 
 def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
     """
