@@ -4,23 +4,28 @@ Definições dos agentes do sistema VerbaFlow.
 import os
 from langchain_groq import ChatGroq
 from crewai import Agent
+from crewai.llm import LLM
 from src.tools import get_tavily_tool
 
 
 def get_llm():
     """
-    Configura e retorna o LLM ChatGroq.
+    Configura e retorna o LLM usando Groq via API compatível com OpenAI.
+    O CrewAI usa o LLM wrapper que aceita base_url para usar Groq.
     
     Returns:
-        ChatGroq configurado
+        LLM configurado para Groq
     """
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise ValueError("GROQ_API_KEY não encontrada nas variáveis de ambiente")
     
-    return ChatGroq(
+    # Usar o LLM do CrewAI configurado para Groq via API compatível com OpenAI
+    # Groq oferece uma API compatível em https://api.groq.com/openai/v1
+    return LLM(
         model="llama-3.1-70b-versatile",
-        groq_api_key=api_key,
+        api_key=api_key,
+        base_url="https://api.groq.com/openai/v1",
         temperature=0.1
     )
 
