@@ -294,7 +294,7 @@ if data_source == "20 Newsgroups (Amostras)":
             
             # Exibir texto e ground truth
             st.markdown("### 📄 Texto Original")
-            st.text_area("", raw_text, height=200, disabled=True, key="raw_text_display")
+            st.text_area("Texto Original", raw_text, height=200, disabled=True, key="raw_text_display", label_visibility="visible")
             
             st.markdown(f"### 🏷️ Categoria Real (Ground Truth)")
             st.info(f"**{ground_truth}**")
