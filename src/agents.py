@@ -65,8 +65,8 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         )
     
     elif provider == "gemini":
-        if not LITELLM_AVAILABLE:
-            raise ValueError("LiteLLM não está disponível. Instale: pip install litellm")
+        if not GEMINI_AVAILABLE:
+            raise ValueError("Gemini não está disponível. Instale: pip install langchain-google-genai")
         
         # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
         api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -75,29 +75,27 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         
         model = model_name or config.gemini_model
         
-        # Normalizar o nome do modelo
+        # Normalizar o nome do modelo para ChatGoogleGenerativeAI
         # Remover prefixos se presentes
         if model.startswith("gemini/"):
             model = model.replace("gemini/", "")
         elif model.startswith("models/"):
             model = model.replace("models/", "")
         
-        # Definir a chave do Google como variável de ambiente para LiteLLM
-        os.environ["GEMINI_API_KEY"] = api_key
-        os.environ["GOOGLE_API_KEY"] = api_key
-        
-        # SOLUÇÃO: Usar o wrapper LLM do CrewAI com formato LiteLLM correto
-        # O formato "gemini/<modelo>" faz o CrewAI usar LiteLLM
-        # IMPORTANTE: O LiteLLM espera "gemini/gemini-1.5-pro" (com prefixo gemini/)
-        gemini_model_name = f"gemini/{model}" if not model.startswith("gemini/") else model
-        
-        # Usar LLM do CrewAI que vai usar LiteLLM internamente
-        # O LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
-        return LLM(
-            model=gemini_model_name,  # Formato LiteLLM: "gemini/gemini-1.5-pro"
-            api_key=api_key,
+        # SOLUÇÃO DEFINITIVA: Usar LangChain LLM diretamente
+        # O CrewAI Agent aceita LangChain LLMs quando passados como llm=
+        # Isso evita completamente o problema do provider nativo
+        # O Agent do CrewAI não tenta converter LangChain LLMs para seu formato interno
+        gemini_llm = ChatGoogleGenerativeAI(
+            model=model,  # Formato correto: "gemini-1.5-pro" (sem prefixos)
+            google_api_key=api_key,
             temperature=config.temperature
         )
+        
+        # Retornar o LangChain LLM diretamente
+        # O Agent do CrewAI aceita LangChain LLMs quando passados como llm=
+        # IMPORTANTE: O Agent não tenta converter LangChain LLMs, então não há problema de provider nativo
+        return gemini_llm
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
