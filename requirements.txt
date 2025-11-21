@@ -31,7 +31,8 @@ pydantic-settings>=2.0.0
 
 # Gemini API (Fallback)
 langchain-google-genai>=0.0.6
-google-generativeai>=0.3.0
+google-generativeai>=0.8.0  # Versão mínima para compatibilidade com langchain-google-genai
+google-ai-generativelanguage>=0.9.0  # Versão necessária para MediaResolution
 litellm>=1.0.0  # Necessário para CrewAI suportar Gemini
 # Provider nativo do Gemini para CrewAI (opcional, mas recomendado para fallback)
 # Instale com: pip install 'crewai[google-genai]' ou descomente a linha abaixo:
