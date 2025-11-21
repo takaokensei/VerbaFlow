@@ -40,11 +40,11 @@ def inject_custom_css():
         max-width: 1200px;
     }
     
-    /* Títulos com Cormorant Garamond */
-    h1, h2, h3 {
+    /* Títulos com Cormorant Garamond - texto branco */
+    h1, h2, h3, h4, h5, h6 {
         font-family: 'Cormorant Garamond', serif;
         font-weight: 600;
-        color: var(--charcoal);
+        color: #FFFFFF !important;
         letter-spacing: -0.02em;
     }
     
@@ -65,10 +65,28 @@ def inject_custom_css():
         margin-bottom: 0.75rem;
     }
     
-    /* Corpo do texto com Inter */
-    body, p, div, span, input, textarea, select {
+    /* Corpo do texto com Inter - texto branco/claro para melhor legibilidade */
+    body, p, div, span {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         color: var(--charcoal);
+    }
+    
+    /* Texto principal em branco para melhor contraste */
+    .main .block-container {
+        color: #FFFFFF;
+    }
+    
+    .main .block-container p,
+    .main .block-container div,
+    .main .block-container span {
+        color: #FFFFFF !important;
+    }
+    
+    /* Inputs e textareas mantêm fundo claro */
+    input, textarea, select {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--charcoal);
+        background-color: var(--soft-white);
     }
     
     /* Cards elegantes */
@@ -178,9 +196,16 @@ def inject_custom_css():
         margin: 1rem 0;
     }
     
-    /* Markdown estilizado */
+    /* Markdown estilizado - texto branco */
     .stMarkdown {
         line-height: 1.7;
+        color: #FFFFFF !important;
+    }
+    
+    .stMarkdown p,
+    .stMarkdown li,
+    .stMarkdown div {
+        color: #FFFFFF !important;
     }
     
     .stMarkdown code {
@@ -189,6 +214,24 @@ def inject_custom_css():
         border-radius: 4px;
         font-family: 'Courier New', monospace;
         font-size: 0.9em;
+        color: var(--charcoal);
+    }
+    
+    /* Métricas com texto branco */
+    .stMetric {
+        color: #FFFFFF !important;
+    }
+    
+    .stMetric label {
+        color: #FFFFFF !important;
+    }
+    
+    .stMetric [data-testid="stMetricValue"] {
+        color: #FFFFFF !important;
+    }
+    
+    .stMetric [data-testid="stMetricDelta"] {
+        color: #FFFFFF !important;
     }
     
     /* Scrollbar customizada */

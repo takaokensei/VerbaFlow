@@ -44,6 +44,7 @@ def extract_category_robust(text: str) -> str:
     """
     Extrai a categoria do output do modelo com parsing robusto.
     Tenta múltiplos padrões regex para encontrar 'Category: <nome>'.
+    Também procura no relatório final por "Categoria Identificada:".
     
     Args:
         text: Texto do output do modelo
@@ -58,18 +59,35 @@ def extract_category_robust(text: str) -> str:
     patterns = [
         r'Category:\s*([^\n\r]+)',  # Padrão básico
         r'Category\s*:\s*([^\n\r]+)',  # Com espaços variáveis
+        r'Categoria\s+Identificada:\s*([^\n\r]+)',  # Do relatório final
         r'Categoria:\s*([^\n\r]+)',  # Em português
         r'Category\s*=\s*([^\n\r]+)',  # Com igual
         r'Final\s+Category:\s*([^\n\r]+)',  # Com prefixo
         r'Classified\s+as:\s*([^\n\r]+)',  # Alternativo
+        r'categoria\s+identificada[:\s]+([^\n\r]+)',  # Case insensitive
     ]
     
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
         if match:
             category = match.group(1).strip()
-            # Limpar pontuação extra no final
-            category = re.sub(r'[.,;:!?]+$', '', category)
+            # Limpar pontuação extra no final e aspas
+            category = re.sub(r'[.,;:!?"\']+$', '', category)
+            category = category.strip('"\'')
+            # Verificar se é uma categoria válida do 20 Newsgroups
+            valid_categories = [
+                'alt.atheism', 'comp.graphics', 'comp.os.ms-windows.misc',
+                'comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware', 'comp.windows.x',
+                'misc.forsale', 'rec.autos', 'rec.motorcycles',
+                'rec.sport.baseball', 'rec.sport.hockey', 'sci.crypt',
+                'sci.electronics', 'sci.med', 'sci.space',
+                'soc.religion.christian', 'talk.politics.guns',
+                'talk.politics.mideast', 'talk.politics.misc', 'talk.religion.misc'
+            ]
+            # Verificar se a categoria extraída corresponde a uma válida
+            if any(cat.lower() == category.lower() for cat in valid_categories):
+                return category
+            # Se não corresponder exatamente, retornar mesmo assim (pode ser variação)
             if category:
                 return category
     
@@ -215,7 +233,33 @@ if data_source == "20 Newsgroups (Amostras)":
                 
                 # Extrair categoria com parsing robusto
                 result_str = str(result)
+                
+                # Tentar extrair da task de classificação primeiro (mais confiável)
+                # O resultado do crew pode conter múltiplas tasks, vamos procurar em todas
                 predicted_category = extract_category_robust(result_str)
+                
+                # Se não encontrou, tentar buscar no output da task1 diretamente
+                if not predicted_category and hasattr(result, 'tasks_output'):
+                    for task_output in result.tasks_output:
+                        predicted_category = extract_category_robust(str(task_output))
+                        if predicted_category:
+                            break
+                
+                # Se ainda não encontrou, buscar no texto completo com padrões mais flexíveis
+                if not predicted_category:
+                    # Procurar por padrões como "talk.politics.misc" ou "sci.space" diretamente no texto
+                    category_pattern = r'\b(' + '|'.join([
+                        'alt\.atheism', 'comp\.graphics', 'comp\.os\.ms-windows\.misc',
+                        'comp\.sys\.ibm\.pc\.hardware', 'comp\.sys\.mac\.hardware', 'comp\.windows\.x',
+                        'misc\.forsale', 'rec\.autos', 'rec\.motorcycles',
+                        'rec\.sport\.baseball', 'rec\.sport\.hockey', 'sci\.crypt',
+                        'sci\.electronics', 'sci\.med', 'sci\.space',
+                        'soc\.religion\.christian', 'talk\.politics\.guns',
+                        'talk\.politics\.mideast', 'talk\.politics\.misc', 'talk\.religion\.misc'
+                    ]) + r')\b'
+                    match = re.search(category_pattern, result_str, re.IGNORECASE)
+                    if match:
+                        predicted_category = match.group(1)
                 
                 # Layout de duas colunas para resultados
                 st.markdown("---")
