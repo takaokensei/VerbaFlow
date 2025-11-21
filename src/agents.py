@@ -75,11 +75,24 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         
         model = model_name or config.gemini_model
         
+        # IMPORTANTE: O CrewAI pode tentar converter LangChain LLMs para seu formato interno
+        # Se isso acontecer, ele pode tentar usar LiteLLM e o formato precisa ser correto
+        # Vamos garantir que o modelo está no formato correto para o ChatGoogleGenerativeAI
+        # O ChatGoogleGenerativeAI aceita: "gemini-1.5-pro", "gemini-pro", etc. (sem prefixo)
+        
+        # Verificar se o modelo já tem o prefixo correto
+        if model.startswith("gemini/"):
+            # Remover prefixo para ChatGoogleGenerativeAI
+            model = model.replace("gemini/", "")
+        elif model.startswith("models/"):
+            # Remover prefixo "models/" se presente
+            model = model.replace("models/", "")
+        
         # SOLUÇÃO: Usar LangChain LLM diretamente em vez do wrapper do CrewAI
         # O Agent do CrewAI aceita LangChain LLMs diretamente quando passados como llm=
         # Isso evita o problema do provider nativo do CrewAI
         gemini_llm = ChatGoogleGenerativeAI(
-            model=model,
+            model=model,  # Formato correto: "gemini-1.5-pro" (sem prefixos)
             google_api_key=api_key,
             temperature=config.temperature
         )
