@@ -5,11 +5,17 @@ Suporta Groq (primário) e Gemini (fallback).
 import os
 from typing import Optional
 from langchain_groq import ChatGroq
-from langchain_google_genai import ChatGoogleGenerativeAI
 from crewai import Agent
 from crewai.llm import LLM
 from src.tools import get_tavily_tool
 from src.config import get_config
+
+# Import opcional do Gemini (pode não estar instalado)
+try:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
 
 
 def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
@@ -46,6 +52,9 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         )
     
     elif provider == "gemini":
+        if not GEMINI_AVAILABLE:
+            raise ValueError("Gemini não está disponível. Instale: pip install langchain-google-genai")
+        
         api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("GOOGLE_API_KEY não encontrada nas variáveis de ambiente")
@@ -60,12 +69,9 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         )
         
         # Converter para formato CrewAI LLM
-        return LLM(
-            model=model,
-            api_key=api_key,
-            base_url="https://generativelanguage.googleapis.com/v1beta",
-            temperature=config.temperature
-        )
+        # Nota: CrewAI pode não suportar Gemini diretamente, então retornamos o ChatGoogleGenerativeAI
+        # O CrewAI deve aceitar LangChain LLMs diretamente
+        return gemini_llm
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")

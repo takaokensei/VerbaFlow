@@ -30,5 +30,6 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
 # Gemini API (Fallback)
+langchain-google-genai>=0.0.6
 google-generativeai>=0.3.0
 
