@@ -388,8 +388,19 @@ if data_source == "20 Newsgroups (Amostras)":
                 
                 # Relatório completo em seção expandível
                 st.markdown("---")
-                with st.expander("📋 Relatório Enriquecido Completo", expanded=True):
-                    st.markdown(result_str)
+                # Usar HTML customizado para evitar problema de ícone
+                st.markdown("""
+                <details open style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <summary style="font-weight: 600; font-size: 1.1rem; cursor: pointer; padding: 0.5rem;">
+                        📋 Relatório Enriquecido Completo
+                    </summary>
+                    <div style="margin-top: 1rem; padding: 1rem; background-color: white; border-radius: 4px;">
+                """, unsafe_allow_html=True)
+                st.markdown(result_str)
+                st.markdown("""
+                    </div>
+                </details>
+                """, unsafe_allow_html=True)
                 
                 # Salvar resultado na sessão
                 st.session_state['last_result'] = {
