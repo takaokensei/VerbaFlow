@@ -5,7 +5,11 @@ import os
 import re
 import streamlit as st
 from pathlib import Path
+from dotenv import load_dotenv
 from crewai import Crew, Process
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 from src.utils import (
     fetch_newsgroups_samples,
     clean_text,

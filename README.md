@@ -117,12 +117,25 @@ VerbaFlow/
     ```
 
 4.  **Configure as Chaves de API:**
-    Renomeie o arquivo `.env.example` para `.env` e insira suas chaves:
-
-    ```env
-    GROQ_API_KEY=sua_chave_aqui
-    TAVILY_API_KEY=sua_chave_aqui
-    ```
+     
+     **IMPORTANTE:** Crie um arquivo `.env` na raiz do projeto (copie do `.env.example`):
+     
+     ```bash
+     # Windows (PowerShell)
+     Copy-Item .env.example .env
+     
+     # Linux/Mac
+     cp .env.example .env
+     ```
+     
+     Depois, edite o arquivo `.env` e insira suas chaves reais:
+     
+     ```env
+     GROQ_API_KEY=sua_chave_groq_aqui
+     TAVILY_API_KEY=sua_chave_tavily_aqui
+     ```
+     
+     ⚠️ **Nota:** O arquivo `.env` está no `.gitignore` e não será commitado. O `.env.example` é apenas um template.
 
 5.  **Execute a Aplicação:**
 
