@@ -34,7 +34,7 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         provider: "groq" (padrão) ou "gemini" (fallback)
     
     Returns:
-        LLM configurado
+        LLM configurado (CrewAI LLM para Groq, LangChain LLM para Gemini)
     
     Raises:
         ValueError: Se as credenciais necessárias não estiverem disponíveis
