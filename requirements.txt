@@ -26,4 +26,9 @@ ipykernel>=6.25.0
 
 # Utilities
 python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Gemini API (Fallback)
+google-generativeai>=0.3.0
 

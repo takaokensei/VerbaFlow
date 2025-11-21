@@ -29,6 +29,7 @@ from src.utils import (
 )
 from src.agents import (
     get_llm,
+    get_llm_with_fallback,
     create_analyst_agent,
     create_researcher_agent,
     create_editor_agent
@@ -38,6 +39,9 @@ from src.tasks import (
     create_enrichment_task,
     create_reporting_task
 )
+from src.config import get_config
+from src.models import ClassificationOutput
+import json
 
 
 def extract_category_robust(text: str) -> str:
@@ -179,6 +183,23 @@ with st.sidebar:
     else:
         st.info("ℹ️ Tavily API Key opcional (enriquecimento não funcionará sem ela)")
     
+    # Histórico de execuções
+    st.markdown("---")
+    st.markdown("### 📜 Histórico de Execuções")
+    
+    if 'execution_history' not in st.session_state:
+        st.session_state['execution_history'] = []
+    
+    if st.session_state['execution_history']:
+        for i, hist_item in enumerate(reversed(st.session_state['execution_history'][-5:]), 1):
+            with st.expander(f"Execução {i}: {hist_item.get('category', 'N/A')} - {hist_item.get('timestamp', '')[:16]}", expanded=False):
+                st.write(f"**Categoria:** {hist_item.get('category', 'N/A')}")
+                st.write(f"**Status:** {'✅ Correto' if hist_item.get('correct', False) else '❌ Incorreto'}")
+                if st.button(f"Ver detalhes", key=f"hist_{i}"):
+                    st.session_state['view_history_item'] = hist_item
+    else:
+        st.info("Nenhuma execução ainda. Execute uma classificação para ver o histórico.")
+    
     st.markdown("---")
     st.markdown("### 📊 Fonte de Dados")
     
@@ -240,26 +261,52 @@ if data_source == "20 Newsgroups (Amostras)":
                 if not tavily_key:
                     st.warning("⚠️ Tavily API Key é necessária para enriquecimento completo.")
                 
-                # Usar st.status para esconder logs brutos
-                with st.status("🔄 Processando com agentes CrewAI...", expanded=False) as status:
+                # Status step-by-step com feedback visual rico
+                with st.status("🚀 Iniciando VerbaFlow...", expanded=True) as status:
                     try:
+                        # Step 1: Preparação
                         status.update(label="🔄 Limpando e preparando texto...", state="running")
                         cleaned_text = clean_text(raw_text)
                         
-                        status.update(label="🔄 Configurando LLM e agentes...", state="running")
-                        # Configurar variáveis de ambiente para forçar uso do Groq
+                        # Step 2: Configuração LLM
+                        status.update(label="⚙️ Configurando LLM (tentando Groq, fallback Gemini)...", state="running")
                         if "OPENAI_API_KEY" in os.environ:
                             original_openai_key = os.environ.pop("OPENAI_API_KEY", None)
                         
-                        # Usar modelo selecionado
                         selected_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-                        llm = get_llm(model_name=selected_model)
+                        try:
+                            llm = get_llm_with_fallback(model_name=selected_model)
+                            llm_provider = "Groq"
+                        except Exception as e:
+                            # Tentar Gemini como fallback
+                            config = get_config()
+                            if config.use_gemini_fallback and config.google_api_key:
+                                llm = get_llm(provider="gemini")
+                                llm_provider = "Gemini (Fallback)"
+                                status.update(label=f"⚠️ Groq falhou, usando {llm_provider}...", state="running")
+                            else:
+                                raise
+                        
+                        # Step 3: Criar agentes
+                        status.update(label="🤖 Criando agentes especializados...", state="running")
                         analyst = create_analyst_agent(llm)
                         researcher = create_researcher_agent(llm)
                         editor = create_editor_agent(llm)
                         
-                        status.update(label="🔄 Criando tasks e pipeline...", state="running")
-                        task1 = create_classification_task(analyst, cleaned_text)
+                        # Step 4: Criar tasks
+                        status.update(label="📋 Criando tasks e pipeline...", state="running")
+                        # Preparar few-shot examples do histórico (se disponível)
+                        few_shot_examples = []
+                        if 'execution_history' in st.session_state and st.session_state['execution_history']:
+                            for hist in st.session_state['execution_history'][-3:]:  # Últimos 3
+                                if 'text_sample' in hist and 'category' in hist:
+                                    few_shot_examples.append({
+                                        'text': hist['text_sample'],
+                                        'category': hist['category'],
+                                        'reasoning': hist.get('reasoning', '')
+                                    })
+                        
+                        task1 = create_classification_task(analyst, cleaned_text, few_shot_examples)
                         task2 = create_enrichment_task(researcher, task1)
                         task3 = create_reporting_task(editor, task1, task2)
                         
@@ -270,8 +317,8 @@ if data_source == "20 Newsgroups (Amostras)":
                             verbose=True
                         )
                         
-                        status.update(label="🤖 Executando análise com Chain of Thought...", state="running")
-                        # Capturar stdout para esconder logs
+                        # Step 5: Executar Task 1 - Classificação
+                        status.update(label="🕵️ [Task 1/3] Analisando texto com Chain of Thought...", state="running")
                         old_stdout = sys.stdout
                         sys.stdout = StringIO()
                         
@@ -280,7 +327,7 @@ if data_source == "20 Newsgroups (Amostras)":
                         finally:
                             sys.stdout = old_stdout
                         
-                        status.update(label="✅ Análise concluída!", state="complete")
+                        status.update(label="✅ Análise completa! Processando resultados...", state="complete")
                     
                     except Exception as e:
                         error_str = str(e)

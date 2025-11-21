@@ -1,43 +1,100 @@
 """
 Definições dos agentes do sistema VerbaFlow.
+Suporta Groq (primário) e Gemini (fallback).
 """
 import os
+from typing import Optional
 from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from crewai import Agent
 from crewai.llm import LLM
 from src.tools import get_tavily_tool
+from src.config import get_config
 
 
-def get_llm(model_name: str = None):
+def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
     """
-    Configura e retorna o LLM usando Groq via API compatível com OpenAI.
-    O CrewAI usa o LLM wrapper que aceita base_url para usar Groq.
+    Configura e retorna o LLM com suporte a múltiplos provedores.
     
     Args:
-        model_name: Nome do modelo a usar. Se None, usa o padrão.
-                   Opções: "llama-3.3-70b-versatile" (padrão, melhor qualidade),
-                           "llama-3.1-8b-instant" (mais rápido, menos tokens),
-                           "mixtral-8x7b-32768" (alternativa)
+        model_name: Nome do modelo a usar. Se None, usa o padrão do provider.
+        provider: "groq" (padrão) ou "gemini" (fallback)
     
     Returns:
-        LLM configurado para Groq
+        LLM configurado
+    
+    Raises:
+        ValueError: Se as credenciais necessárias não estiverem disponíveis
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise ValueError("GROQ_API_KEY não encontrada nas variáveis de ambiente")
+    config = get_config()
     
-    # Modelo padrão ou o especificado
-    if model_name is None:
-        model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if provider == "groq":
+        api_key = config.groq_api_key or os.getenv("GROQ_API_KEY")
+        if not api_key:
+            if config.use_gemini_fallback and config.google_api_key:
+                # Fallback automático para Gemini
+                return get_llm(model_name=config.gemini_model, provider="gemini")
+            raise ValueError("GROQ_API_KEY não encontrada e fallback Gemini não configurado")
+        
+        model = model_name or config.groq_model
+        
+        return LLM(
+            model=model,
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+            temperature=config.temperature
+        )
     
-    # Usar o LLM do CrewAI configurado para Groq via API compatível com OpenAI
-    # Groq oferece uma API compatível em https://api.groq.com/openai/v1
-    return LLM(
-        model=model_name,
-        api_key=api_key,
-        base_url="https://api.groq.com/openai/v1",
-        temperature=0.1
-    )
+    elif provider == "gemini":
+        api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY não encontrada nas variáveis de ambiente")
+        
+        model = model_name or config.gemini_model
+        
+        # Gemini via LangChain
+        gemini_llm = ChatGoogleGenerativeAI(
+            model=model,
+            google_api_key=api_key,
+            temperature=config.temperature
+        )
+        
+        # Converter para formato CrewAI LLM
+        return LLM(
+            model=model,
+            api_key=api_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta",
+            temperature=config.temperature
+        )
+    
+    else:
+        raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
+
+
+def get_llm_with_fallback(model_name: Optional[str] = None) -> LLM:
+    """
+    Obtém LLM com fallback automático para Gemini se Groq falhar.
+    
+    Args:
+        model_name: Nome do modelo (opcional)
+    
+    Returns:
+        LLM configurado (Groq ou Gemini)
+    """
+    config = get_config()
+    
+    try:
+        return get_llm(model_name=model_name, provider="groq")
+    except (ValueError, Exception) as e:
+        if config.use_gemini_fallback:
+            try:
+                return get_llm(model_name=config.gemini_model, provider="gemini")
+            except Exception as gemini_error:
+                raise ValueError(
+                    f"Falha ao usar Groq: {e}. "
+                    f"Falha ao usar Gemini (fallback): {gemini_error}"
+                )
+        raise
 
 
 def create_analyst_agent(llm):
