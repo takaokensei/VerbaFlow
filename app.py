@@ -394,42 +394,118 @@ if data_source == "20 Newsgroups (Amostras)":
                         old_stdout = sys.stdout
                         sys.stdout = StringIO()
                         
+                        result = None
                         try:
                             result = crew.kickoff()
+                        except Exception as crew_error:
+                            error_str = str(crew_error)
+                            # Verificar se é rate limit
+                            is_rate_limit = (
+                                "429" in error_str or 
+                                "rate_limit" in error_str.lower() or 
+                                "Rate limit" in error_str or
+                                "rate limit reached" in error_str.lower()
+                            )
+                            
+                            # Se for rate limit e fallback estiver ativado, tentar com Gemini
+                            if is_rate_limit:
+                                config = get_config()
+                                gemini_key_available = (
+                                    config.google_api_key or 
+                                    os.getenv("GOOGLE_API_KEY") or 
+                                    os.getenv("GEMINI_API_KEY")
+                                )
+                                
+                                if config.use_gemini_fallback and gemini_key_available:
+                                    try:
+                                        st.warning("⚠️ **Rate limit do Groq atingido!** Ativando fallback para Gemini...")
+                                        status.update(label="🔄 Recriando agentes com Gemini (fallback)...", state="running")
+                                        
+                                        # Recriar LLM com Gemini
+                                        gemini_llm = get_llm(provider="gemini")
+                                        llm_provider = "Gemini (Fallback)"
+                                        
+                                        # Recriar agentes com Gemini
+                                        analyst_gemini = create_analyst_agent(gemini_llm)
+                                        researcher_gemini = create_researcher_agent(gemini_llm)
+                                        editor_gemini = create_editor_agent(gemini_llm)
+                                        
+                                        # Recriar tasks
+                                        task1_gemini = create_classification_task(analyst_gemini, cleaned_text, few_shot_examples if few_shot_examples else None)
+                                        task2_gemini = create_enrichment_task(researcher_gemini, task1_gemini)
+                                        task3_gemini = create_reporting_task(editor_gemini, task1_gemini, task2_gemini)
+                                        
+                                        # Recriar crew com Gemini
+                                        crew_gemini = Crew(
+                                            agents=[analyst_gemini, researcher_gemini, editor_gemini],
+                                            tasks=[task1_gemini, task2_gemini, task3_gemini],
+                                            process=Process.sequential,
+                                            verbose=True
+                                        )
+                                        
+                                        st.success("✅ **Fallback ativado!** Executando com Gemini...")
+                                        status.update(label="🕵️ [Task 1/3] Analisando com Gemini (fallback)...", state="running")
+                                        
+                                        # Executar com Gemini
+                                        result = crew_gemini.kickoff()
+                                        st.balloons()
+                                        
+                                    except Exception as gemini_error:
+                                        st.error(f"""
+                                        ## ❌ Fallback Gemini também falhou
+                                        
+                                        **Erro do Groq:** {crew_error}
+                                        
+                                        **Erro do Gemini:** {gemini_error}
+                                        
+                                        💡 **Sugestões:**
+                                        1. Verifique se a chave do Gemini está correta
+                                        2. Aguarde alguns minutos e tente novamente
+                                        3. Verifique se o pacote `langchain-google-genai` está instalado
+                                        """)
+                                        status.update(label=f"❌ Erro: Fallback falhou", state="error")
+                                        with st.expander("🔍 Detalhes do Erro"):
+                                            st.exception(gemini_error)
+                                        st.stop()
+                                else:
+                                    # Rate limit mas fallback não configurado
+                                    st.error("""
+                                    ## ⚠️ Rate Limit Atingido
+                                    
+                                    Você atingiu o limite diário de tokens do Groq (100,000 tokens/dia no tier gratuito).
+                                    
+                                    **Soluções:**
+                                    
+                                    1. **Ativar Fallback:** Configure a chave do Gemini na sidebar e marque "Usar Gemini como fallback automático"
+                                    
+                                    2. **Aguardar:** O limite será resetado em algumas horas (geralmente à meia-noite UTC)
+                                    
+                                    3. **Usar modelo menor:** Tente usar `llama-3.1-8b-instant` na sidebar - ele consome muito menos tokens
+                                    
+                                    4. **Upgrade:** Faça upgrade para Dev Tier em https://console.groq.com/settings/billing
+                                    """)
+                                    st.info(f"**Modelo atual:** {os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}")
+                                    st.info("💡 **Dica:** Configure o fallback do Gemini na sidebar para evitar este problema!")
+                                    status.update(label=f"❌ Erro: Rate limit", state="error")
+                                    st.stop()
+                            else:
+                                # Erro não relacionado a rate limit
+                                raise crew_error
                         finally:
                             sys.stdout = old_stdout
+                        
+                        if result is None:
+                            st.error("❌ Execução falhou sem resultado")
+                            st.stop()
                         
                         status.update(label="✅ Análise completa! Processando resultados...", state="complete")
                     
                     except Exception as e:
                         error_str = str(e)
                         status.update(label=f"❌ Erro: {str(e)[:50]}...", state="error")
-                        
-                        # Tratamento especial para rate limit
-                        if "429" in error_str or "rate_limit" in error_str.lower() or "Rate limit" in error_str:
-                            st.error("""
-                            ## ⚠️ Rate Limit Atingido
-                            
-                            Você atingiu o limite diário de tokens do Groq (100,000 tokens/dia no tier gratuito).
-                            
-                            **Soluções:**
-                            
-                            1. **Aguardar:** O limite será resetado em algumas horas (geralmente à meia-noite UTC)
-                            
-                            2. **Usar modelo menor:** Tente usar `llama-3.1-8b-instant` na sidebar - ele consome muito menos tokens
-                            
-                            3. **Upgrade:** Faça upgrade para Dev Tier em https://console.groq.com/settings/billing
-                            
-                            4. **Reduzir prompts:** Os prompts CoT são detalhados e consomem muitos tokens. 
-                               Você pode simplificar temporariamente.
-                            """)
-                            
-                            st.info(f"**Modelo atual:** {os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}")
-                            st.info("💡 **Dica:** Tente novamente com `llama-3.1-8b-instant` - é mais rápido e consome ~10x menos tokens!")
-                        else:
-                            st.error(f"❌ Erro durante execução: {e}")
-                            with st.expander("🔍 Detalhes do Erro"):
-                                st.exception(e)
+                        st.error(f"❌ Erro durante execução: {e}")
+                        with st.expander("🔍 Detalhes do Erro"):
+                            st.exception(e)
                         st.stop()
                 
                 # Extrair categoria com parsing robusto
