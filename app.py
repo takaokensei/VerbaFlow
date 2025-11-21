@@ -351,123 +351,25 @@ if data_source == "20 Newsgroups (Amostras)":
                                 "rate limit reached" in error_str.lower()
                             )
                             
-                            # Se for rate limit e fallback estiver ativado, tentar com Gemini
+                            # Se for rate limit, mostrar mensagem de erro
                             if is_rate_limit:
-                                config = get_config()
-                                gemini_key_available = (
-                                    config.google_api_key or 
-                                    os.getenv("GOOGLE_API_KEY") or 
-                                    os.getenv("GEMINI_API_KEY")
-                                )
+                                # Rate limit atingido - mostrar mensagem de erro
+                                st.error("""
+                                ## ⚠️ Rate Limit Atingido
                                 
-                                if config.use_gemini_fallback and gemini_key_available:
-                                    try:
-                                        st.warning("⚠️ **Rate limit do Groq atingido!** Ativando fallback para Gemini...")
-                                        status.update(label="🔄 Recriando agentes com Gemini (fallback)...", state="running")
-                                        
-                                        # Recriar LLM com Gemini
-                                        gemini_llm = get_llm(provider="gemini")
-                                        llm_provider = "Gemini (Fallback)"
-                                        
-                                        # Recriar agentes com Gemini
-                                        analyst_gemini = create_analyst_agent(gemini_llm)
-                                        researcher_gemini = create_researcher_agent(gemini_llm)
-                                        editor_gemini = create_editor_agent(gemini_llm)
-                                        
-                                        # Recriar tasks
-                                        task1_gemini = create_classification_task(analyst_gemini, cleaned_text, few_shot_examples if few_shot_examples else None)
-                                        task2_gemini = create_enrichment_task(researcher_gemini, task1_gemini)
-                                        task3_gemini = create_reporting_task(editor_gemini, task1_gemini, task2_gemini)
-                                        
-                                        # Recriar crew com Gemini
-                                        # Passar LLM diretamente ao Crew para evitar conversão pelo Agent
-                                        crew_gemini = Crew(
-                                            agents=[analyst_gemini, researcher_gemini, editor_gemini],
-                                            tasks=[task1_gemini, task2_gemini, task3_gemini],
-                                            process=Process.sequential,
-                                            verbose=True,
-                                            llm=gemini_llm  # Passar LLM diretamente ao Crew
-                                        )
-                                        
-                                        st.success("✅ **Fallback ativado!** Executando com Gemini...")
-                                        status.update(label="🕵️ [Task 1/3] Analisando com Gemini (fallback)...", state="running")
-                                        
-                                        # Executar com Gemini
-                                        result = crew_gemini.kickoff()
-                                        st.balloons()
-                                        
-                                    except Exception as gemini_error:
-                                        error_str = str(gemini_error).lower()
-                                        is_provider_error = (
-                                            "google-genai" in error_str or 
-                                            "native provider" in error_str or
-                                            "provider not available" in error_str
-                                        )
-                                        
-                                        if is_provider_error:
-                                            st.error(f"""
-                                            ## ❌ Fallback Gemini: Provider Nativo Não Instalado
-                                            
-                                            **Erro do Groq:** {crew_error}
-                                            
-                                            **Erro do Gemini:** {gemini_error}
-                                            
-                                            🔧 **Solução:**
-                                            
-                                            O provider nativo do Gemini não está instalado. Para ativar o fallback automático:
-                                            
-                                            **Opção 1 (Recomendada):** Execute o script de instalação:
-                                            ```bash
-                                            python install_gemini_provider.py
-                                            ```
-                                            
-                                            **Opção 2:** Instale manualmente:
-                                            ```bash
-                                            pip install 'crewai[google-genai]'
-                                            ```
-                                            
-                                            **Alternativas:**
-                                            - Aguarde o reset do rate limit do Groq (~12 minutos)
-                                            - Use um modelo menor do Groq (llama-3.1-8b-instant) que consome menos tokens
-                                            """)
-                                        else:
-                                            st.error(f"""
-                                            ## ❌ Fallback Gemini também falhou
-                                            
-                                            **Erro do Groq:** {crew_error}
-                                            
-                                            **Erro do Gemini:** {gemini_error}
-                                            
-                                            💡 **Sugestões:**
-                                            1. Verifique se a chave do Gemini está correta
-                                            2. Aguarde alguns minutos e tente novamente
-                                            3. Verifique se o pacote `langchain-google-genai` está instalado
-                                            """)
-                                        status.update(label=f"❌ Erro: Fallback falhou", state="error")
-                                        with st.expander("🔍 Detalhes do Erro"):
-                                            st.exception(gemini_error)
-                                        st.stop()
-                                else:
-                                    # Rate limit mas fallback não configurado
-                                    st.error("""
-                                    ## ⚠️ Rate Limit Atingido
-                                    
-                                    Você atingiu o limite diário de tokens do Groq (100,000 tokens/dia no tier gratuito).
-                                    
-                                    **Soluções:**
-                                    
-                                    1. **Ativar Fallback:** Configure a chave do Gemini na sidebar e marque "Usar Gemini como fallback automático"
-                                    
-                                    2. **Aguardar:** O limite será resetado em algumas horas (geralmente à meia-noite UTC)
-                                    
-                                    3. **Usar modelo menor:** Tente usar `llama-3.1-8b-instant` na sidebar - ele consome muito menos tokens
-                                    
-                                    4. **Upgrade:** Faça upgrade para Dev Tier em https://console.groq.com/settings/billing
-                                    """)
-                                    st.info(f"**Modelo atual:** {os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}")
-                                    st.info("💡 **Dica:** Configure o fallback do Gemini na sidebar para evitar este problema!")
-                                    status.update(label=f"❌ Erro: Rate limit", state="error")
-                                    st.stop()
+                                Você atingiu o limite diário de tokens do Groq (100,000 tokens/dia no tier gratuito).
+                                
+                                **Soluções:**
+                                
+                                1. **Aguardar:** O limite será resetado em algumas horas (geralmente à meia-noite UTC)
+                                
+                                2. **Usar modelo menor:** Tente usar `llama-3.1-8b-instant` na sidebar - ele consome muito menos tokens
+                                
+                                3. **Upgrade:** Faça upgrade para Dev Tier em https://console.groq.com/settings/billing
+                                """)
+                                st.info(f"**Modelo atual:** {os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}")
+                                status.update(label=f"❌ Erro: Rate limit", state="error")
+                                st.stop()
                             else:
                                 # Erro não relacionado a rate limit
                                 raise crew_error
