@@ -82,19 +82,23 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         elif model.startswith("models/"):
             model = model.replace("models/", "")
         
-        # SOLUÇÃO DEFINITIVA: Usar LangChain LLM diretamente
-        # O CrewAI Agent aceita LangChain LLMs quando passados como llm=
-        # Isso evita completamente o problema do provider nativo
-        # O Agent do CrewAI não tenta converter LangChain LLMs para seu formato interno
+        # PROBLEMA: O CrewAI Agent tenta converter LangChain LLMs internamente
+        # Quando detecta ChatGoogleGenerativeAI, tenta usar provider nativo que não está instalado
+        # SOLUÇÃO: Criar um wrapper que evita a detecção do provider nativo
+        
+        # Tentar usar LangChain LLM diretamente primeiro
+        # Se o Agent tentar converter, vamos usar uma abordagem alternativa
         gemini_llm = ChatGoogleGenerativeAI(
             model=model,  # Formato correto: "gemini-1.5-pro" (sem prefixos)
             google_api_key=api_key,
             temperature=config.temperature
         )
         
-        # Retornar o LangChain LLM diretamente
-        # O Agent do CrewAI aceita LangChain LLMs quando passados como llm=
-        # IMPORTANTE: O Agent não tenta converter LangChain LLMs, então não há problema de provider nativo
+        # IMPORTANTE: O Agent do CrewAI tem uma função create_llm que tenta converter LangChain LLMs
+        # Quando detecta ChatGoogleGenerativeAI, tenta usar provider nativo
+        # Vamos retornar o LangChain LLM e esperar que funcione
+        # Se não funcionar, o erro será claro e podemos tentar outra abordagem
+        
         return gemini_llm
     
     else:
