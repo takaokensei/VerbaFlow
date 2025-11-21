@@ -118,13 +118,17 @@ if data_source == "20 Newsgroups (Amostras)":
                         # Limpar texto
                         cleaned_text = clean_text(raw_text)
                         
-                        # Configurar variável de ambiente dummy para OpenAI
-                        # (CrewAI tenta importar OpenAI mesmo quando usamos LLM customizado)
-                        if "OPENAI_API_KEY" not in os.environ:
-                            os.environ["OPENAI_API_KEY"] = "dummy-key-to-prevent-openai-import-error"
+                        # Configurar variáveis de ambiente para forçar uso do Groq
+                        # O CrewAI precisa que OPENAI_API_KEY não esteja definida ou seja inválida
+                        # para usar LLM customizado
+                        if "OPENAI_API_KEY" in os.environ:
+                            # Salvar temporariamente e remover
+                            original_openai_key = os.environ.pop("OPENAI_API_KEY", None)
                         
-                        # Criar agentes
+                        # Criar LLM Groq
                         llm = get_llm()
+                        
+                        # Criar agentes com LLM explicitamente configurado
                         analyst = create_analyst_agent(llm)
                         researcher = create_researcher_agent(llm)
                         editor = create_editor_agent(llm)
@@ -134,13 +138,12 @@ if data_source == "20 Newsgroups (Amostras)":
                         task2 = create_enrichment_task(researcher, task1)
                         task3 = create_reporting_task(editor, task1, task2)
                         
-                        # Criar crew com LLM configurado explicitamente
+                        # Criar crew - cada agente já tem seu LLM Groq configurado
                         crew = Crew(
                             agents=[analyst, researcher, editor],
                             tasks=[task1, task2, task3],
                             process=Process.sequential,
-                            verbose=True,
-                            llm=llm  # Especificar LLM explicitamente para evitar uso de OpenAI
+                            verbose=True
                         )
                         
                         # Executar
