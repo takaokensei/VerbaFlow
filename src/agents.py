@@ -68,17 +68,21 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         
         model = model_name or config.gemini_model
         
-        # Gemini via LangChain
-        gemini_llm = ChatGoogleGenerativeAI(
-            model=model,
-            google_api_key=api_key,
+        # CrewAI usa LiteLLM internamente, que suporta Gemini
+        # Usar o formato: "gemini/gemini-1.5-pro" para LiteLLM
+        # Definir a chave do Google como variável de ambiente para LiteLLM
+        os.environ["GEMINI_API_KEY"] = api_key
+        os.environ["GOOGLE_API_KEY"] = api_key
+        
+        # Usar LLM do CrewAI com modelo Gemini via LiteLLM
+        # Formato: "gemini/<modelo>" para usar Gemini via LiteLLM
+        gemini_model_name = f"gemini/{model}" if not model.startswith("gemini/") else model
+        
+        return LLM(
+            model=gemini_model_name,
+            api_key=api_key,
             temperature=config.temperature
         )
-        
-        # Converter para formato CrewAI LLM
-        # Nota: CrewAI pode não suportar Gemini diretamente, então retornamos o ChatGoogleGenerativeAI
-        # O CrewAI deve aceitar LangChain LLMs diretamente
-        return gemini_llm
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
