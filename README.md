@@ -90,6 +90,7 @@ VerbaFlow/
   * Python 3.12+
   * API Key do [Groq](https://groq.com/)
   * API Key do [Tavily](https://tavily.com/)
+  * (Opcional) API Key do [Google Gemini](https://ai.google.dev/) para fallback automático
 
 ### Passo a Passo
 
@@ -133,11 +134,27 @@ VerbaFlow/
      ```env
      GROQ_API_KEY=sua_chave_groq_aqui
      TAVILY_API_KEY=sua_chave_tavily_aqui
+     GOOGLE_API_KEY=sua_chave_gemini_aqui  # Opcional: para fallback automático
+     USE_GEMINI_FALLBACK=true              # Opcional: ativar fallback automático
      ```
      
      ⚠️ **Nota:** O arquivo `.env` está no `.gitignore` e não será commitado. O `.env.example` é apenas um template.
 
-5.  **Execute a Aplicação:**
+6.  **(Opcional) Instale o Provider Nativo do Gemini para Fallback:**
+     
+     Se você quiser usar o fallback automático para Gemini quando o Groq atingir o rate limit, instale o provider nativo:
+     
+     ```bash
+     # Opção 1: Usando o script fornecido
+     python install_gemini_provider.py
+     
+     # Opção 2: Instalação manual
+     pip install 'crewai[google-genai]'
+     ```
+     
+     ⚠️ **Nota:** O provider nativo do Gemini é opcional. Se não estiver instalado, o sistema ainda funcionará com Groq, mas o fallback automático para Gemini não estará disponível.
+
+7.  **Execute a Aplicação:**
 
     ```bash
     streamlit run app.py
