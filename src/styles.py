@@ -510,10 +510,10 @@ def inject_custom_css():
     /* ============================================
        14. EXPANDER - Collapsible Sections
        ============================================ */
-    /* Esconder ícones Material Icons quebrados */
-    [class*="material-icons"],
-    [class*="keyboard_double_arrow"],
-    button[aria-label*="keyboard"],
+    /* Esconder ícones Material Icons quebrados APENAS dentro de expanders */
+    .streamlit-expanderHeader [class*="material-icons"],
+    .streamlit-expanderHeader [class*="keyboard_double_arrow"],
+    .streamlit-expanderHeader button[aria-label*="keyboard"],
     .streamlit-expanderHeader [class*="material"],
     .streamlit-expanderHeader [class*="keyboard"] {
         display: none !important;
@@ -649,11 +649,29 @@ def inject_custom_css():
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* Keep sidebar toggle visible */
+    /* ============================================
+       20.1. SIDEBAR TOGGLE - Ensure Visibility
+       ============================================ */
+    /* Garantir que o botão de toggle da sidebar seja sempre visível */
     [data-testid="collapsedControl"] {
-        visibility: visible !important;
         display: flex !important;
+        visibility: visible !important;
         color: var(--text-primary) !important;
+    }
+    
+    [data-testid="collapsedControl"] svg {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    /* Garantir que Material Icons dentro do sidebar toggle NÃO sejam escondidos */
+    [data-testid="collapsedControl"] [class*="material-icons"],
+    [data-testid="collapsedControl"] [class*="keyboard"] {
+        display: inline-block !important;
+        visibility: visible !important;
+        font-size: inherit !important;
+        width: auto !important;
+        height: auto !important;
     }
 
     /* ============================================
