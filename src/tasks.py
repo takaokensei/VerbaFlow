@@ -6,57 +6,75 @@ from crewai import Task
 
 def create_classification_task(agent, text: str):
     """
-    Cria a Task 1: Classificação do texto.
+    Cria a Task 1: Classificação do texto com Chain of Thought explícito.
     
     Args:
         agent: Agente Analista
         text: Texto a ser classificado
     
     Returns:
-        Task configurada
+        Task configurada com CoT
     """
     return Task(
         description=f"""
-        Analise o seguinte texto e classifique-o em UMA das 20 categorias do dataset 20 Newsgroups.
+        Analise o seguinte texto usando a metodologia Chain of Thought (CoT). Siga EXATAMENTE estes 4 passos:
         
-        Texto a classificar:
+        **TEXTO A CLASSIFICAR:**
         {text}
         
-        IMPORTANTE: Seu output DEVE conter exatamente a seguinte linha:
+        ---
+        
+        **PASSO 1: ANÁLISE DE ENTIDADES**
+        Identifique e liste:
+        - Organizações mencionadas (ex: IBM, Apple, Microsoft, NASA)
+        - Termos técnicos específicos (ex: "encryption", "hardware", "software")
+        - Domínios de conhecimento (ex: medicina, ciência espacial, criptografia)
+        - Contexto temporal (anos 90 - tecnologia da época)
+        
+        **PASSO 2: RACIOCÍNIO CONTEXTUAL**
+        Conecte as entidades identificadas às definições das 20 categorias:
+        - alt.atheism: Discussões sobre ateísmo
+        - comp.graphics: Computação gráfica, visualização
+        - comp.os.ms-windows.misc: Windows (geral)
+        - comp.sys.ibm.pc.hardware: Hardware PC IBM-compatível
+        - comp.sys.mac.hardware: Hardware Macintosh
+        - comp.windows.x: Sistema X Window
+        - misc.forsale: Anúncios de venda
+        - rec.autos: Automóveis
+        - rec.motorcycles: Motocicletas
+        - rec.sport.baseball: Beisebol
+        - rec.sport.hockey: Hóquei
+        - sci.crypt: Criptografia
+        - sci.electronics: Eletrônica
+        - sci.med: Medicina
+        - sci.space: Espaço/astronomia
+        - soc.religion.christian: Cristianismo
+        - talk.politics.guns: Política sobre armas
+        - talk.politics.mideast: Política do Oriente Médio
+        - talk.politics.misc: Política geral
+        - talk.religion.misc: Religião geral
+        
+        **PASSO 3: HIPÓTESE COM EXCLUSÕES**
+        Liste 2-3 categorias candidatas e explique por que você EXCLUI as outras:
+        - Categoria candidata 1: [razão]
+        - Categoria candidata 2: [razão]
+        - Por que NÃO é [categoria similar]: [diferença chave]
+        
+        **PASSO 4: CONCLUSÃO FINAL**
+        Após sua análise, forneça a classificação final no formato EXATO:
+        
         Category: <nome_da_categoria>
         
-        Onde <nome_da_categoria> é uma das seguintes categorias:
-        - alt.atheism
-        - comp.graphics
-        - comp.os.ms-windows.misc
-        - comp.sys.ibm.pc.hardware
-        - comp.sys.mac.hardware
-        - comp.windows.x
-        - misc.forsale
-        - rec.autos
-        - rec.motorcycles
-        - rec.sport.baseball
-        - rec.sport.hockey
-        - sci.crypt
-        - sci.electronics
-        - sci.med
-        - sci.space
-        - soc.religion.christian
-        - talk.politics.guns
-        - talk.politics.mideast
-        - talk.politics.misc
-        - talk.religion.misc
-        
-        Seja preciso e justifique brevemente sua escolha.
+        Onde <nome_da_categoria> é UMA das 20 categorias listadas acima, escrita EXATAMENTE como mostrado.
         """,
         agent=agent,
-        expected_output="Output contendo 'Category: <nome_da_categoria>' seguido de uma breve justificativa."
+        expected_output="Análise completa em 4 passos (Entidades, Raciocínio, Hipótese, Conclusão) terminando com 'Category: <nome_da_categoria>' em linha separada."
     )
 
 
 def create_enrichment_task(agent, classification_task):
     """
-    Cria a Task 2: Enriquecimento com contexto web.
+    Cria a Task 2: Enriquecimento com contexto web estruturado.
     
     Args:
         agent: Agente Pesquisador
@@ -67,25 +85,36 @@ def create_enrichment_task(agent, classification_task):
     """
     return Task(
         description="""
-        Com base na classificação realizada na task anterior, extraia o nome da categoria identificada 
-        e busque informações atualizadas e contexto moderno sobre esse tópico na web.
+        Com base na classificação realizada na task anterior, realize uma pesquisa web estruturada:
         
-        Use a ferramenta Tavily para encontrar:
-        - Notícias recentes relacionadas ao tópico
-        - Tendências atuais
-        - Contexto adicional relevante
+        **PASSO 1: EXTRAÇÃO DA CATEGORIA**
+        Identifique a categoria classificada no resultado da task anterior.
         
-        Forneça um resumo conciso das informações encontradas.
+        **PASSO 2: PESQUISA WEB ESTRATÉGICA**
+        Use a ferramenta Tavily para buscar informações sobre:
+        - Evolução do tópico desde os anos 90 até hoje
+        - Notícias recentes (últimos 2 anos) relacionadas
+        - Tendências atuais e desenvolvimentos modernos
+        - Contexto histórico e relevância contemporânea
+        
+        **PASSO 3: SÍNTESE**
+        Organize as informações encontradas em:
+        - **Contexto Histórico:** Como o tópico era visto nos anos 90
+        - **Evolução:** Principais mudanças desde então
+        - **Relevância Atual:** Por que o tópico ainda importa hoje
+        - **Fontes:** Principais descobertas ou notícias encontradas
+        
+        Forneça um resumo estruturado e informativo que enriqueça a classificação.
         """,
         agent=agent,
         context=[classification_task],
-        expected_output="Resumo do contexto web encontrado sobre a categoria identificada, incluindo informações atualizadas."
+        expected_output="Resumo estruturado do contexto web com histórico, evolução, relevância atual e fontes encontradas."
     )
 
 
 def create_reporting_task(agent, classification_task, enrichment_task):
     """
-    Cria a Task 3: Compilação do relatório final.
+    Cria a Task 3: Compilação do relatório executivo final.
     
     Args:
         agent: Agente Editor Chefe
@@ -97,23 +126,38 @@ def create_reporting_task(agent, classification_task, enrichment_task):
     """
     return Task(
         description="""
-        Compile um relatório completo em Markdown, escrito em português brasileiro (pt-BR), que inclua:
+        Compile um relatório executivo elegante e profissional em Markdown, escrito em português brasileiro (pt-BR).
         
-        1. **Classificação Realizada:**
-        Use os resultados da task de classificação anterior.
+        **ESTRUTURA DO RELATÓRIO:**
         
-        2. **Contexto Web Encontrado:**
-        Use os resultados da task de enriquecimento anterior.
+        # Relatório de Classificação e Enriquecimento
         
-        3. **Análise Final:**
-        - Resumo da classificação
-        - Relevância do contexto encontrado
-        - Conclusões
+        ## 1. Resumo Executivo
+        Um parágrafo conciso (3-4 linhas) resumindo a classificação e sua relevância.
         
-        O relatório deve ser profissional, bem formatado em Markdown e totalmente em português brasileiro.
+        ## 2. Análise de Classificação
+        - **Categoria Identificada:** [nome da categoria]
+        - **Metodologia:** Resuma os 4 passos da análise CoT realizada
+        - **Confiança:** Avalie a confiança na classificação (alta/média/baixa) e justifique
+        
+        ## 3. Contexto e Enriquecimento Web
+        - **Evolução Histórica:** Como o tópico evoluiu desde os anos 90
+        - **Relevância Contemporânea:** Por que o tópico ainda importa hoje
+        - **Descobertas Principais:** Principais informações encontradas na pesquisa web
+        
+        ## 4. Conclusões
+        - Síntese final
+        - Implicações da classificação
+        - Valor do enriquecimento contextual
+        
+        **REQUISITOS:**
+        - Escrito totalmente em português brasileiro (pt-BR)
+        - Formatação Markdown profissional e elegante
+        - Linguagem clara, acessível mas técnica
+        - Use títulos, listas e formatação para melhorar a legibilidade
         """,
         agent=agent,
         context=[classification_task, enrichment_task],
-        expected_output="Relatório completo em Markdown, em português brasileiro, contendo classificação, contexto web e análise final."
+        expected_output="Relatório executivo completo em Markdown, em português brasileiro, com estrutura profissional e elegante."
     )
 
