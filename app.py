@@ -114,16 +114,22 @@ st.markdown("---")
 with st.sidebar:
     st.header("⚙️ Configurações")
     
+    # Carregar valores do .env como valores padrão
+    groq_key_env = os.getenv("GROQ_API_KEY", "")
+    tavily_key_env = os.getenv("TAVILY_API_KEY", "")
+    
     groq_key = st.text_input(
         "Groq API Key",
+        value=groq_key_env if groq_key_env else "",
         type="password",
-        help="Chave de API do Groq para o modelo Llama 3.1 70B"
+        help="Chave de API do Groq. Se deixar vazio, usa o valor do arquivo .env"
     )
     
     tavily_key = st.text_input(
         "Tavily API Key",
+        value=tavily_key_env if tavily_key_env else "",
         type="password",
-        help="Chave de API do Tavily para busca web"
+        help="Chave de API do Tavily. Se deixar vazio, usa o valor do arquivo .env"
     )
     
     st.markdown("---")
@@ -148,11 +154,30 @@ with st.sidebar:
         selected_model = "mixtral-8x7b-32768"
     
     # Salvar API keys nas variáveis de ambiente
+    # Se o usuário digitou algo, usa isso. Senão, mantém o valor do .env
     if groq_key:
         os.environ["GROQ_API_KEY"] = groq_key
+    elif groq_key_env:
+        os.environ["GROQ_API_KEY"] = groq_key_env
+    
     if tavily_key:
         os.environ["TAVILY_API_KEY"] = tavily_key
+    elif tavily_key_env:
+        os.environ["TAVILY_API_KEY"] = tavily_key_env
+    
     os.environ["GROQ_MODEL"] = selected_model
+    
+    # Mostrar status das chaves
+    st.markdown("---")
+    if groq_key_env or groq_key:
+        st.success("✅ Groq API Key configurada")
+    else:
+        st.warning("⚠️ Groq API Key não encontrada")
+    
+    if tavily_key_env or tavily_key:
+        st.success("✅ Tavily API Key configurada")
+    else:
+        st.info("ℹ️ Tavily API Key opcional (enriquecimento não funcionará sem ela)")
     
     st.markdown("---")
     st.markdown("### 📊 Fonte de Dados")
@@ -165,8 +190,16 @@ with st.sidebar:
 
 
 # Área principal
-if not groq_key:
-    st.warning("⚠️ Por favor, configure a Groq API Key na barra lateral para continuar.")
+# Verificar se temos Groq API Key (do .env ou da sidebar)
+groq_key_available = os.getenv("GROQ_API_KEY")
+if not groq_key_available:
+    st.warning("""
+    ⚠️ **Groq API Key não encontrada!**
+    
+    Configure de uma das seguintes formas:
+    1. **Arquivo .env:** Adicione `GROQ_API_KEY=sua_chave_aqui` no arquivo `.env`
+    2. **Sidebar:** Digite a chave no campo "Groq API Key" na barra lateral
+    """)
     st.stop()
 
 # Seleção de dados
