@@ -436,11 +436,13 @@ if data_source == "20 Newsgroups (Amostras)":
                                         task3_gemini = create_reporting_task(editor_gemini, task1_gemini, task2_gemini)
                                         
                                         # Recriar crew com Gemini
+                                        # Passar LLM diretamente ao Crew para evitar conversão pelo Agent
                                         crew_gemini = Crew(
                                             agents=[analyst_gemini, researcher_gemini, editor_gemini],
                                             tasks=[task1_gemini, task2_gemini, task3_gemini],
                                             process=Process.sequential,
-                                            verbose=True
+                                            verbose=True,
+                                            llm=gemini_llm  # Passar LLM diretamente ao Crew
                                         )
                                         
                                         st.success("✅ **Fallback ativado!** Executando com Gemini...")
