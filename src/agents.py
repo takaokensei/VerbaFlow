@@ -17,9 +17,9 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
-# Import LiteLLM para usar diretamente
+# Import LiteLLM para verificar disponibilidade
 try:
-    from litellm import completion
+    import litellm
     LITELLM_AVAILABLE = True
 except ImportError:
     LITELLM_AVAILABLE = False
