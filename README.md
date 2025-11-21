@@ -1,123 +1,155 @@
-# VerbaFlow
-<<<<<<< HEAD
+# 🧠 VerbaFlow
 
-Sistema Multi-Agente usando CrewAI, Groq e Tavily para Classificação e Enriquecimento de Textos. Projeto Capstone para Módulo 15 DSA.
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)
+![CrewAI](https://img.shields.io/badge/AI-CrewAI-orange)
+![Streamlit](https://img.shields.io/badge/frontend-Streamlit-red)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## 📋 Descrição
+> **Sistema Multi-Agente para Classificação e Enriquecimento Contextual de Textos.**
+> *Projeto Capstone desenvolvido para o Módulo 15 da Formação em Inteligência Artificial (DSA).*
 
-VerbaFlow é um sistema multi-agente que demonstra o paradigma **ReAct (Reason + Act)** aplicado à classificação de textos. O sistema utiliza três agentes especializados trabalhando em sequência para classificar textos do dataset 20 Newsgroups e enriquecê-los com contexto web moderno.
+---
 
-## 🏗️ Arquitetura
+## 📖 Sobre o Projeto
 
-O sistema é composto por **3 agentes especializados**:
+**VerbaFlow** é uma aplicação que demonstra a evolução do Processamento de Linguagem Natural (NLP) saindo de modelos estáticos para sistemas dinâmicos baseados em agentes.
 
-1. **O Analista** - Especialista em classificação NLP (20 categorias Newsgroups)
-2. **O Pesquisador** - Busca contexto moderno na web usando Tavily
-3. **O Editor Chefe** - Compila relatório final em Markdown (pt-BR)
+Utilizando o paradigma **ReAct (Reason + Act)**, o sistema não apenas classifica uma notícia (como modelos tradicionais), mas "entende" o conteúdo, busca validação externa na web em tempo real e gera um relatório enriquecido.
 
-## 🚀 Tecnologias
+### ✨ Diferenciais
+* **Orquestração de Agentes:** 3 agentes especializados trabalhando em cadeia.
+* **Enriquecimento Web:** Uso da API Tavily para buscar fatos atuais sobre textos antigos (anos 90).
+* **Validação Automática:** Comparação em tempo real entre a *Predição do Agente* e o *Ground Truth* do dataset.
+* **Interface Interativa:** UI amigável construída com Streamlit.
 
-- **Python 3.12** (obrigatório para compatibilidade CrewAI/Pydantic)
-- **CrewAI** - Framework para sistemas multi-agente
-- **Groq (Llama 3.1 70B)** - Modelo de linguagem
-- **Tavily** - Busca web para enriquecimento
-- **Streamlit** - Interface web interativa
-- **Scikit-Learn** - Dataset 20 Newsgroups
-- **Pandas** - Processamento de dados CSV
+---
 
-## 📁 Estrutura do Projeto
+## 🏗️ Arquitetura do Sistema
 
-```
+O fluxo de trabalho segue um pipeline sequencial processado pelo framework **CrewAI**:
+
+```mermaid
+graph TD
+    A[Usuário / Input] --> B(Agente 1: O Analista);
+    B -->|Classificação & Tópico| C(Agente 2: O Pesquisador);
+    C -->|Contexto Web & Fatos| D(Agente 3: O Editor Chefe);
+    D -->|Relatório Final Markdown| E[Interface Streamlit];
+    
+    subgraph "Validação"
+    B -.-> V{Comparar com Ground Truth};
+    V -->|✅ ou ❌| E;
+    end
+````
+
+### Os Agentes
+
+1.  🕵️ **O Analista:** Especialista em NLP. Lê o texto bruto e determina a categoria exata (baseado no dataset 20 Newsgroups).
+2.  🌐 **O Pesquisador:** Especialista em Fact-Checking. Usa o **Tavily** para buscar o contexto moderno do tópico identificado.
+3.  ✍️ **O Editor Chefe:** Especialista em síntese. Compila a classificação técnica e a pesquisa web em um relatório executivo em Português.
+
+-----
+
+## 🚀 Tecnologias Utilizadas
+
+  * **Core:** Python 3.12 (Versão estável para CrewAI/Pydantic)
+  * **Orquestração:** CrewAI
+  * **LLM Engine:** Groq (Modelo: `llama-3.3-70b-versatile`)
+  * **Ferramentas (Tools):** Tavily Search API
+  * **Interface:** Streamlit
+  * **Dados:** Scikit-Learn (20 Newsgroups) & Pandas
+
+-----
+
+## 📁 Estrutura do Repositório
+
+```bash
 VerbaFlow/
 ├── data/
-│   ├── samples/          # Amostras do 20 Newsgroups
-│   └── raw/              # CSV customizado (6 classes)
+│   ├── samples/          # Cache de amostras do 20 Newsgroups (com Ground Truth no nome)
+│   └── raw/              # Dataset customizado (CSV)
 ├── src/
-│   ├── agents.py         # Definições dos 3 agentes
-│   ├── tasks.py          # 3 tasks sequenciais
-│   ├── tools.py          # TavilySearchTool
-│   └── utils.py          # Carregamento e pré-processamento
+│   ├── agents.py         # Definição dos Agentes (Brain)
+│   ├── tasks.py          # Definição das Tarefas (Instructions)
+│   ├── tools.py          # Configuração do Tavily
+│   └── utils.py          # Carregamento e limpeza de dados
 ├── notebooks/
-│   └── experimentacao_agentes.ipynb
+│   └── experimentacao_agentes.ipynb  # Sandbox para testes sem interface
 ├── docs/
-│   └── GAMMA_SLIDES_PROMPT.md
-├── app.py                # Interface Streamlit
-├── requirements.txt
-└── .env.example
+│   └── GAMMA_SLIDES_PROMPT.md        # Prompt para geração de slides
+├── app.py                # Aplicação Principal (Entry Point)
+├── requirements.txt      # Dependências do projeto
+└── .env.example          # Template de variáveis de ambiente
 ```
 
-## ⚙️ Instalação
+-----
 
-1. Clone o repositório:
-```bash
-git clone <repository-url>
-cd VerbaFlow
-```
+## ⚡ Instalação e Execução
 
-2. Crie um ambiente virtual (Python 3.12):
-```bash
-python3.12 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
-```
+### Pré-requisitos
 
-3. Instale as dependências:
-```bash
-pip install -r requirements.txt
-```
+  * Python 3.12+
+  * API Key do [Groq](https://groq.com/)
+  * API Key do [Tavily](https://tavily.com/)
 
-4. Configure as API Keys:
-```bash
-cp .env.example .env
-# Edite .env e adicione suas chaves:
-# - GROQ_API_KEY
-# - TAVILY_API_KEY
-```
+### Passo a Passo
 
-## 🎯 Uso
+1.  **Clone o repositório:**
 
-### Interface Streamlit
+    ```bash
+    git clone [https://github.com/takaokensei/VerbaFlow.git](https://github.com/takaokensei/VerbaFlow.git)
+    cd VerbaFlow
+    ```
 
-Execute a aplicação web:
-```bash
-streamlit run app.py
-```
+2.  **Crie o ambiente virtual:**
 
-A interface permite:
-- Configurar API Keys (Groq e Tavily)
-- Selecionar fonte de dados (20 Newsgroups ou CSV customizado)
-- Visualizar texto original e ground truth
-- Executar classificação e enriquecimento
-- Validar resultados automaticamente
+    ```bash
+    python -m venv venv
+    # Windows
+    venv\Scripts\activate
+    # Linux/Mac
+    source venv/bin/activate
+    ```
 
-### Notebook Jupyter
+3.  **Instale as dependências:**
 
-Para experimentação sem interface:
-```bash
-jupyter notebook notebooks/experimentacao_agentes.ipynb
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-## 📊 Dataset
+4.  **Configure as Chaves de API:**
+    Renomeie o arquivo `.env.example` para `.env` e insira suas chaves:
 
-O sistema suporta duas fontes de dados:
+    ```env
+    GROQ_API_KEY=sua_chave_aqui
+    TAVILY_API_KEY=sua_chave_aqui
+    ```
 
-1. **20 Newsgroups**: Dataset clássico com 20 categorias de textos
-2. **CSV Customizado**: Arquivo `Base_dados_textos_6_classes.csv` na pasta `data/raw/`
+5.  **Execute a Aplicação:**
 
-## ✅ Validação
+    ```bash
+    streamlit run app.py
+    ```
 
-O sistema valida automaticamente as classificações comparando:
-- **Ground Truth**: Extraído do nome do arquivo (formato: `categoria___sampleN.txt`)
-- **Predicted**: Extraído do output do Analista (formato: `Category: <nome>`)
+-----
 
-## 📝 Licença
+## 📊 Dados e Validação
 
-MIT License - Veja [LICENSE](LICENSE) para detalhes.
+O sistema foi projetado para suportar duas fontes de dados para fins de demonstração acadêmica:
+
+1.  **20 Newsgroups:** Dataset canônico de classificação de textos. O sistema extrai o *Ground Truth* do nome do arquivo (ex: `sci.space___sample1.txt`) e valida se o Agente Analista acertou a previsão.
+2.  **CSV Customizado:** Suporte para carga de dados proprietários via arquivo `data/raw/Base_dados_textos_6_classes.csv`.
+
+-----
 
 ## 👤 Autor
 
-Projeto desenvolvido para Módulo 15 DSA.
-=======
-Multi-Agent System using CrewAI, Groq, and Tavily for Text Classification &amp; Enrichment. Capstone Project for DSA Module 15.
->>>>>>> 0dca2f1246f2fdba8060d848684b0258c919222b
+**Cauã Vitor F. Silva**
+
+  * *Engenharia Elétrica - UFRN*
+  * *Projeto desenvolvido para o Módulo 15 da Data Science Academy.*
+
+-----
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](https://www.google.com/search?q=LICENSE) para mais detalhes.

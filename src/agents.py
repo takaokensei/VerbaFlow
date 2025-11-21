@@ -22,8 +22,9 @@ def get_llm():
     
     # Usar o LLM do CrewAI configurado para Groq via API compatível com OpenAI
     # Groq oferece uma API compatível em https://api.groq.com/openai/v1
+    # Modelo atualizado: llama-3.3-70b-versatile (substituto do llama-3.1-70b-versatile descontinuado)
     return LLM(
-        model="llama-3.1-70b-versatile",
+        model="llama-3.3-70b-versatile",
         api_key=api_key,
         base_url="https://api.groq.com/openai/v1",
         temperature=0.1
