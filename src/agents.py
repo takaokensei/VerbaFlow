@@ -84,22 +84,34 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         
         # PROBLEMA: O CrewAI Agent tenta converter LangChain LLMs internamente
         # Quando detecta ChatGoogleGenerativeAI, tenta usar provider nativo que não está instalado
-        # SOLUÇÃO: Criar um wrapper que evita a detecção do provider nativo
+        # 
+        # SOLUÇÃO: Criar um wrapper simples que "esconde" o tipo ChatGoogleGenerativeAI
+        # Isso evita que o CrewAI detecte e tente usar o provider nativo
         
-        # Tentar usar LangChain LLM diretamente primeiro
-        # Se o Agent tentar converter, vamos usar uma abordagem alternativa
+        class GeminiLLMWrapper:
+            """Wrapper para ChatGoogleGenerativeAI que evita detecção do provider nativo do CrewAI"""
+            def __init__(self, llm):
+                self._llm = llm
+                # Copiar métodos importantes do LangChain LLM
+                self.call = llm.invoke if hasattr(llm, 'invoke') else llm.__call__
+                self.invoke = llm.invoke if hasattr(llm, 'invoke') else llm.__call__
+                self.__call__ = llm.__call__ if hasattr(llm, '__call__') else None
+                # Manter referência ao LLM original
+                self._langchain_llm = llm
+            
+            def __getattr__(self, name):
+                # Delegar todos os outros atributos/métodos ao LLM original
+                return getattr(self._llm, name)
+        
+        # Criar LangChain LLM
         gemini_llm = ChatGoogleGenerativeAI(
             model=model,  # Formato correto: "gemini-1.5-pro" (sem prefixos)
             google_api_key=api_key,
             temperature=config.temperature
         )
         
-        # IMPORTANTE: O Agent do CrewAI tem uma função create_llm que tenta converter LangChain LLMs
-        # Quando detecta ChatGoogleGenerativeAI, tenta usar provider nativo
-        # Vamos retornar o LangChain LLM e esperar que funcione
-        # Se não funcionar, o erro será claro e podemos tentar outra abordagem
-        
-        return gemini_llm
+        # Retornar wrapper que evita detecção do provider nativo
+        return GeminiLLMWrapper(gemini_llm)
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
