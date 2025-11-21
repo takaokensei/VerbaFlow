@@ -84,34 +84,47 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         
         # PROBLEMA: O CrewAI Agent tenta converter LangChain LLMs internamente
         # Quando detecta ChatGoogleGenerativeAI, tenta usar provider nativo que não está instalado
+        # Quando usa LiteLLM, passa formato errado: "models/gemini-1.5-pro" em vez de "gemini/gemini-1.5-pro"
         # 
-        # SOLUÇÃO: Criar um wrapper simples que "esconde" o tipo ChatGoogleGenerativeAI
-        # Isso evita que o CrewAI detecte e tente usar o provider nativo
+        # SOLUÇÃO: Usar o wrapper LLM do CrewAI com formato LiteLLM correto
+        # O formato "gemini/<modelo>" faz o CrewAI usar LiteLLM diretamente
         
-        class GeminiLLMWrapper:
-            """Wrapper para ChatGoogleGenerativeAI que evita detecção do provider nativo do CrewAI"""
-            def __init__(self, llm):
-                self._llm = llm
-                # Copiar métodos importantes do LangChain LLM
-                self.call = llm.invoke if hasattr(llm, 'invoke') else llm.__call__
-                self.invoke = llm.invoke if hasattr(llm, 'invoke') else llm.__call__
-                self.__call__ = llm.__call__ if hasattr(llm, '__call__') else None
-                # Manter referência ao LLM original
-                self._langchain_llm = llm
-            
-            def __getattr__(self, name):
-                # Delegar todos os outros atributos/métodos ao LLM original
-                return getattr(self._llm, name)
+        # Definir a chave do Google como variável de ambiente para LiteLLM
+        os.environ["GEMINI_API_KEY"] = api_key
+        os.environ["GOOGLE_API_KEY"] = api_key
         
-        # Criar LangChain LLM
-        gemini_llm = ChatGoogleGenerativeAI(
-            model=model,  # Formato correto: "gemini-1.5-pro" (sem prefixos)
-            google_api_key=api_key,
-            temperature=config.temperature
-        )
+        # Normalizar modelo (remover prefixos se presentes)
+        clean_model = model
+        if clean_model.startswith("gemini/"):
+            clean_model = clean_model.replace("gemini/", "")
+        elif clean_model.startswith("models/"):
+            clean_model = clean_model.replace("models/", "")
         
-        # Retornar wrapper que evita detecção do provider nativo
-        return GeminiLLMWrapper(gemini_llm)
+        # Usar formato LiteLLM correto: "gemini/gemini-1.5-pro"
+        gemini_model_name = f"gemini/{clean_model}"
+        
+        # Usar wrapper LLM do CrewAI que vai usar LiteLLM
+        # O LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
+        try:
+            return LLM(
+                model=gemini_model_name,  # Formato LiteLLM: "gemini/gemini-1.5-pro"
+                api_key=api_key,
+                temperature=config.temperature
+            )
+        except ImportError as e:
+            # Se o provider nativo tentar ser usado, dar erro claro
+            if "google-genai" in str(e).lower() or "gemini" in str(e).lower():
+                raise ValueError(
+                    f"O CrewAI está tentando usar o provider nativo do Gemini, mas ele não está instalado. "
+                    f"O formato 'gemini/{clean_model}' deveria forçar o uso do LiteLLM, mas o CrewAI "
+                    f"ainda está tentando o provider nativo primeiro.\n\n"
+                    f"**Soluções:**\n"
+                    f"1. Instale o provider nativo: pip install 'crewai[google-genai]' (pode falhar)\n"
+                    f"2. Aguarde o reset do rate limit do Groq (~{12} minutos)\n"
+                    f"3. Use um modelo menor do Groq (llama-3.1-8b-instant) que consome menos tokens\n\n"
+                    f"Erro original: {e}"
+                )
+            raise
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
