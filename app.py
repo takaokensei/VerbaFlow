@@ -724,7 +724,7 @@ else:  # CSV Customizado
                     ground_truth = str(df.iloc[selected_idx][category_col])
                     
                     st.markdown("### 📄 Texto Original")
-                    st.text_area("", raw_text, height=200, disabled=True)
+                    st.text_area("Texto Original", raw_text, height=200, disabled=True, label_visibility="visible")
                     
                     st.markdown(f"### 🏷️ Categoria Real (Ground Truth)")
                     st.info(f"**{ground_truth}**")
