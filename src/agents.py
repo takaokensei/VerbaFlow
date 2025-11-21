@@ -25,7 +25,7 @@ except ImportError:
     LITELLM_AVAILABLE = False
 
 
-def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
+def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
     """
     Configura e retorna o LLM com suporte a múltiplos provedores.
     
@@ -65,8 +65,8 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         )
     
     elif provider == "gemini":
-        if not LITELLM_AVAILABLE:
-            raise ValueError("LiteLLM não está disponível. Instale: pip install litellm")
+        if not GEMINI_AVAILABLE:
+            raise ValueError("Gemini não está disponível. Instale: pip install langchain-google-genai")
         
         # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
         api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -75,46 +75,18 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         
         model = model_name or config.gemini_model
         
-        # Definir a chave do Google como variável de ambiente para LiteLLM
-        os.environ["GEMINI_API_KEY"] = api_key
-        os.environ["GOOGLE_API_KEY"] = api_key
+        # SOLUÇÃO: Usar LangChain LLM diretamente em vez do wrapper do CrewAI
+        # O Agent do CrewAI aceita LangChain LLMs diretamente quando passados como llm=
+        # Isso evita o problema do provider nativo do CrewAI
+        gemini_llm = ChatGoogleGenerativeAI(
+            model=model,
+            google_api_key=api_key,
+            temperature=config.temperature
+        )
         
-        # IMPORTANTE: O CrewAI tenta usar o provider nativo do Gemini primeiro
-        # Para forçar o uso do LiteLLM, precisamos usar um formato que o CrewAI não reconheça como nativo
-        # Solução: Usar formato LiteLLM com prefixo explícito que força LiteLLM
-        # Formato: "gemini/<modelo>" - mas o CrewAI ainda tenta o provider nativo primeiro
-        # Alternativa: Usar um nome de modelo que force LiteLLM diretamente
-        
-        # Tentar usar formato que força LiteLLM
-        # O LiteLLM aceita "gemini/gemini-1.5-pro" ou apenas "gemini-1.5-pro" com GEMINI_API_KEY
-        gemini_model_name = f"gemini/{model}" if not model.startswith("gemini/") else model
-        
-        # O problema: CrewAI detecta "gemini" e tenta usar provider nativo
-        # Solução: Usar LangChain LLM diretamente em vez do CrewAI LLM wrapper
-        # Mas o CrewAI precisa do seu próprio LLM wrapper...
-        
-        # Tentar criar LLM do CrewAI - se falhar com provider nativo, o erro será claro
-        try:
-            return LLM(
-                model=gemini_model_name,
-                api_key=api_key,
-                temperature=config.temperature
-            )
-        except ImportError as e:
-            if "google-genai" in str(e).lower() or "gemini" in str(e).lower():
-                # Provider nativo não disponível - mas o CrewAI deveria usar LiteLLM como fallback
-                # O problema é que o CrewAI tenta o provider nativo ANTES do LiteLLM
-                raise ValueError(
-                    f"O CrewAI está tentando usar o provider nativo do Gemini, mas ele não está instalado. "
-                    f"O CrewAI deveria usar o LiteLLM automaticamente quando o provider nativo falha, "
-                    f"mas isso não está funcionando. "
-                    f"\n\nSoluções possíveis:\n"
-                    f"1. Instale o provider nativo: pip install 'crewai[google-genai]' (pode falhar)\n"
-                    f"2. Use uma versão do CrewAI que suporte LiteLLM como fallback automático\n"
-                    f"3. Aguarde o reset do rate limit do Groq\n"
-                    f"\nErro original: {e}"
-                )
-            raise
+        # Retornar o LangChain LLM diretamente
+        # O Agent do CrewAI aceita LangChain LLMs quando passados como llm=
+        return gemini_llm
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
