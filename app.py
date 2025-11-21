@@ -588,13 +588,13 @@ if data_source == "20 Newsgroups (Amostras)":
                     # Se ainda não encontrou, buscar no texto completo com padrões mais flexíveis
                     if not predicted_category:
                         category_pattern = r'\b(' + '|'.join([
-                            'alt\.atheism', 'comp\.graphics', 'comp\.os\.ms-windows\.misc',
-                            'comp\.sys\.ibm\.pc\.hardware', 'comp\.sys\.mac\.hardware', 'comp\.windows\.x',
-                            'misc\.forsale', 'rec\.autos', 'rec\.motorcycles',
-                            'rec\.sport\.baseball', 'rec\.sport\.hockey', 'sci\.crypt',
-                            'sci\.electronics', 'sci\.med', 'sci\.space',
-                            'soc\.religion\.christian', 'talk\.politics\.guns',
-                            'talk\.politics\.mideast', 'talk\.politics\.misc', 'talk\.religion\.misc'
+                            r'alt\.atheism', r'comp\.graphics', r'comp\.os\.ms-windows\.misc',
+                            r'comp\.sys\.ibm\.pc\.hardware', r'comp\.sys\.mac\.hardware', r'comp\.windows\.x',
+                            r'misc\.forsale', r'rec\.autos', r'rec\.motorcycles',
+                            r'rec\.sport\.baseball', r'rec\.sport\.hockey', r'sci\.crypt',
+                            r'sci\.electronics', r'sci\.med', r'sci\.space',
+                            r'soc\.religion\.christian', r'talk\.politics\.guns',
+                            r'talk\.politics\.mideast', r'talk\.politics\.misc', r'talk\.religion\.misc'
                         ]) + r')\b'
                         match = re.search(category_pattern, result_str, re.IGNORECASE)
                         if match:
