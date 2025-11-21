@@ -69,18 +69,21 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         model = model_name or config.gemini_model
         
         # CrewAI usa LiteLLM internamente, que suporta Gemini
-        # Usar o formato: "gemini/gemini-1.5-pro" para LiteLLM
+        # LiteLLM usa o formato: "gemini/<modelo>" e busca GEMINI_API_KEY automaticamente
         # Definir a chave do Google como variável de ambiente para LiteLLM
         os.environ["GEMINI_API_KEY"] = api_key
         os.environ["GOOGLE_API_KEY"] = api_key
         
         # Usar LLM do CrewAI com modelo Gemini via LiteLLM
         # Formato: "gemini/<modelo>" para usar Gemini via LiteLLM
+        # Exemplo: "gemini/gemini-1.5-pro" ou "gemini/gemini-pro"
         gemini_model_name = f"gemini/{model}" if not model.startswith("gemini/") else model
         
+        # O CrewAI LLM vai usar LiteLLM internamente, que suporta Gemini
+        # LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
         return LLM(
             model=gemini_model_name,
-            api_key=api_key,
+            api_key=api_key,  # Passar também como parâmetro (algumas versões do CrewAI podem precisar)
             temperature=config.temperature
         )
     
