@@ -36,7 +36,7 @@ class VerbaFlowConfig(BaseSettings):
     
     google_api_key: Optional[str] = Field(
         default=None,
-        description="Google API Key para Gemini (fallback)"
+        description="Google API Key para Gemini (fallback). Aceita também GEMINI_API_KEY"
     )
     
     # Configurações de Modelo
@@ -86,12 +86,20 @@ def get_config() -> VerbaFlowConfig:
     """
     Retorna a instância global de configuração (singleton).
     
+    Suporta tanto GOOGLE_API_KEY quanto GEMINI_API_KEY como variáveis de ambiente.
+    
     Returns:
         VerbaFlowConfig: Configuração carregada
     """
     global _config
     if _config is None:
         _config = VerbaFlowConfig()
+        # Se google_api_key não foi definida mas GEMINI_API_KEY existe, usar ela
+        if not _config.google_api_key:
+            import os
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            if gemini_key:
+                _config.google_api_key = gemini_key
     return _config
 
 

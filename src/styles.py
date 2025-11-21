@@ -511,11 +511,12 @@ def inject_custom_css():
        14. EXPANDER - Collapsible Sections
        ============================================ */
     /* Esconder ícones Material Icons quebrados APENAS dentro de expanders */
-    .streamlit-expanderHeader [class*="material-icons"],
-    .streamlit-expanderHeader [class*="keyboard_double_arrow"],
-    .streamlit-expanderHeader button[aria-label*="keyboard"],
-    .streamlit-expanderHeader [class*="material"],
-    .streamlit-expanderHeader [class*="keyboard"] {
+    /* IMPORTANTE: NÃO afetar o sidebar toggle [data-testid="collapsedControl"] */
+    .streamlit-expanderHeader [class*="material-icons"]:not([data-testid="collapsedControl"] *),
+    .streamlit-expanderHeader [class*="keyboard_double_arrow"]:not([data-testid="collapsedControl"] *),
+    .streamlit-expanderHeader button[aria-label*="keyboard"]:not([data-testid="collapsedControl"]),
+    .streamlit-expanderHeader [class*="material"]:not([data-testid="collapsedControl"] *),
+    .streamlit-expanderHeader [class*="keyboard"]:not([data-testid="collapsedControl"] *) {
         display: none !important;
         visibility: hidden !important;
         font-size: 0 !important;
@@ -653,25 +654,45 @@ def inject_custom_css():
        20.1. SIDEBAR TOGGLE - Ensure Visibility
        ============================================ */
     /* Garantir que o botão de toggle da sidebar seja sempre visível */
-    [data-testid="collapsedControl"] {
+    [data-testid="collapsedControl"],
+    button[data-testid="collapsedControl"],
+    [data-testid="collapsedControl"] button {
         display: flex !important;
         visibility: visible !important;
         color: var(--text-primary) !important;
+        opacity: 1 !important;
     }
     
-    [data-testid="collapsedControl"] svg {
+    [data-testid="collapsedControl"] svg,
+    button[data-testid="collapsedControl"] svg {
         display: block !important;
         visibility: visible !important;
+        opacity: 1 !important;
+        width: 24px !important;
+        height: 24px !important;
     }
     
-    /* Garantir que Material Icons dentro do sidebar toggle NÃO sejam escondidos */
-    [data-testid="collapsedControl"] [class*="material-icons"],
-    [data-testid="collapsedControl"] [class*="keyboard"] {
+    /* Garantir que Material Icons e texto dentro do sidebar toggle NÃO sejam escondidos */
+    [data-testid="collapsedControl"] span,
+    button[data-testid="collapsedControl"] span,
+    button[aria-label*="sidebar"] span {
         display: inline-block !important;
         visibility: visible !important;
-        font-size: inherit !important;
+        opacity: 1 !important;
+        font-size: 24px !important;
         width: auto !important;
         height: auto !important;
+        color: var(--text-primary) !important;
+        font-family: 'Material Icons' !important;
+    }
+    
+    /* Garantir que texto "keyboard_double_arrow_right" seja renderizado como Material Icon */
+    [data-testid="collapsedControl"],
+    button[data-testid="collapsedControl"],
+    button[aria-label*="sidebar"],
+    button[aria-label*="Close sidebar"],
+    button[aria-label*="Open sidebar"] {
+        font-family: 'Material Icons', sans-serif !important;
     }
 
     /* ============================================

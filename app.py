@@ -121,7 +121,8 @@ with st.sidebar:
     # Carregar valores do .env como valores padrão
     groq_key_env = os.getenv("GROQ_API_KEY", "")
     tavily_key_env = os.getenv("TAVILY_API_KEY", "")
-    google_key_env = os.getenv("GOOGLE_API_KEY", "")
+    # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
+    google_key_env = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
     
     groq_key = st.text_input(
         "Groq API Key",
@@ -188,8 +189,10 @@ with st.sidebar:
     
     if google_key:
         os.environ["GOOGLE_API_KEY"] = google_key
+        os.environ["GEMINI_API_KEY"] = google_key  # Também definir GEMINI_API_KEY para compatibilidade
     elif google_key_env:
         os.environ["GOOGLE_API_KEY"] = google_key_env
+        os.environ["GEMINI_API_KEY"] = google_key_env  # Também definir GEMINI_API_KEY para compatibilidade
     
     os.environ["GROQ_MODEL"] = selected_model
     os.environ["USE_GEMINI_FALLBACK"] = str(use_fallback).lower()
@@ -320,16 +323,39 @@ if data_source == "20 Newsgroups (Amostras)":
                             llm = get_llm_with_fallback(model_name=selected_model)
                             llm_provider = "Groq"
                         except Exception as e:
-                            # Tentar Gemini como fallback
+                            # Tentar Gemini como fallback se Groq falhar
+                            error_str = str(e).lower()
+                            is_rate_limit = "429" in error_str or "rate limit" in error_str or "rate_limit" in error_str
+                            
                             config = get_config()
-                            if config.use_gemini_fallback and (config.google_api_key or os.getenv("GOOGLE_API_KEY")):
+                            # Verificar se há chave do Gemini disponível (GOOGLE_API_KEY ou GEMINI_API_KEY)
+                            gemini_key_available = (
+                                config.google_api_key or 
+                                os.getenv("GOOGLE_API_KEY") or 
+                                os.getenv("GEMINI_API_KEY")
+                            )
+                            
+                            if config.use_gemini_fallback and gemini_key_available:
                                 try:
+                                    st.warning(f"⚠️ Groq falhou ({e}). Tentando fallback para Gemini...")
                                     llm = get_llm(provider="gemini")
                                     llm_provider = "Gemini (Fallback)"
-                                    status.update(label=f"⚠️ Groq falhou, usando {llm_provider}...", state="running")
+                                    status.update(label=f"✅ Usando {llm_provider}...", state="running")
+                                    st.success(f"✅ Fallback ativado: usando Gemini em vez de Groq")
                                 except Exception as gemini_error:
-                                    raise ValueError(f"Falha no Groq: {e}. Falha no Gemini: {gemini_error}")
+                                    error_msg = f"Falha no Groq: {e}\n\nFalha no Gemini (fallback): {gemini_error}"
+                                    if is_rate_limit:
+                                        error_msg += "\n\n💡 **Sugestões:**\n1. Aguarde alguns minutos e tente novamente\n2. Use um modelo menor (llama-3.1-8b-instant)\n3. Verifique se a chave do Gemini está correta"
+                                    raise ValueError(error_msg)
                             else:
+                                if is_rate_limit:
+                                    raise ValueError(
+                                        f"Rate limit do Groq atingido: {e}\n\n"
+                                        "💡 **Soluções:**\n"
+                                        "1. Configure o fallback do Gemini na sidebar\n"
+                                        "2. Aguarde alguns minutos\n"
+                                        "3. Use um modelo menor (llama-3.1-8b-instant)"
+                                    )
                                 raise
                         
                         # Step 3: Criar agentes

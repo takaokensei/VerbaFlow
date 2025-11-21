@@ -37,7 +37,13 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
     if provider == "groq":
         api_key = config.groq_api_key or os.getenv("GROQ_API_KEY")
         if not api_key:
-            if config.use_gemini_fallback and config.google_api_key:
+            # Verificar se há chave do Gemini disponível para fallback
+            gemini_key = (
+                config.google_api_key or 
+                os.getenv("GOOGLE_API_KEY") or 
+                os.getenv("GEMINI_API_KEY")
+            )
+            if config.use_gemini_fallback and gemini_key:
                 # Fallback automático para Gemini
                 return get_llm(model_name=config.gemini_model, provider="gemini")
             raise ValueError("GROQ_API_KEY não encontrada e fallback Gemini não configurado")
@@ -55,9 +61,10 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         if not GEMINI_AVAILABLE:
             raise ValueError("Gemini não está disponível. Instale: pip install langchain-google-genai")
         
-        api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY")
+        # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
+        api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GOOGLE_API_KEY não encontrada nas variáveis de ambiente")
+            raise ValueError("GOOGLE_API_KEY ou GEMINI_API_KEY não encontrada nas variáveis de ambiente")
         
         model = model_name or config.gemini_model
         
