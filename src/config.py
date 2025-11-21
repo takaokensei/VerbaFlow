@@ -46,8 +46,8 @@ class VerbaFlowConfig(BaseSettings):
     )
     
     gemini_model: str = Field(
-        default="gemini-1.5-pro",
-        description="Modelo Gemini a ser usado como fallback"
+        default="gemini-1.5-flash",  # Usar flash como padrão (mais rápido e compatível)
+        description="Modelo Gemini a ser usado como fallback. Opções: gemini-1.5-flash, gemini-1.5-pro, gemini-pro"
     )
     
     # Configurações de Execução

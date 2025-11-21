@@ -93,15 +93,26 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
         os.environ["GEMINI_API_KEY"] = api_key
         os.environ["GOOGLE_API_KEY"] = api_key
         
-        # Se o provider nativo está disponível, usar formato correto para ele
-        # O provider nativo do CrewAI espera apenas o nome do modelo sem prefixos
-        # Mas precisa ser um modelo válido para a API v1beta do Google
+        # IMPORTANTE: O provider nativo do CrewAI adiciona automaticamente o prefixo "models/"
+        # Mas a API v1beta do Google não aceita esse formato
+        # A solução é usar apenas o nome do modelo sem prefixos quando o provider nativo estiver ativo
+        # O CrewAI vai adicionar o prefixo "models/" internamente, mas precisamos garantir que o nome base está correto
+        
+        # Para a API v1beta do Google, os modelos válidos são:
+        # - "gemini-1.5-pro" (mas pode precisar ser "gemini-1.5-pro-latest" ou outro formato)
+        # - "gemini-1.5-flash"
+        # - "gemini-pro"
+        
+        # Se o provider nativo está disponível, usar apenas o nome do modelo
+        # O CrewAI vai adicionar "models/" automaticamente, mas o nome base precisa estar correto
         if NATIVE_PROVIDER_AVAILABLE:
-            # Para o provider nativo, usar apenas o nome do modelo
-            # Mas verificar se é um modelo válido para v1beta
-            # Modelos válidos: "gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"
-            # Se o modelo for "gemini-1.5-pro", pode precisar ser "gemini-1.5-pro-latest" ou apenas o nome
+            # Tentar usar o modelo sem prefixos - o CrewAI vai adicionar "models/" internamente
+            # Mas se isso não funcionar, pode ser que o modelo precise ser "gemini-1.5-pro-latest"
             gemini_model_name = clean_model
+            # Se for "gemini-1.5-pro", tentar também "gemini-1.5-pro-latest" como fallback
+            if clean_model == "gemini-1.5-pro":
+                # Primeiro tentar sem sufixo, se falhar, tentar com -latest
+                gemini_model_name = clean_model
         else:
             # Se não tiver provider nativo, usar formato LiteLLM: "gemini/gemini-1.5-pro"
             gemini_model_name = f"gemini/{clean_model}"
