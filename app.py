@@ -126,11 +126,33 @@ with st.sidebar:
         help="Chave de API do Tavily para busca web"
     )
     
+    st.markdown("---")
+    st.markdown("### 🤖 Modelo Groq")
+    
+    model_choice = st.selectbox(
+        "Selecione o modelo:",
+        [
+            "llama-3.3-70b-versatile (Melhor qualidade, mais tokens)",
+            "llama-3.1-8b-instant (Mais rápido, menos tokens)",
+            "mixtral-8x7b-32768 (Alternativa)"
+        ],
+        help="Modelos menores consomem menos tokens e são mais rápidos"
+    )
+    
+    # Extrair nome do modelo
+    if "llama-3.3-70b" in model_choice:
+        selected_model = "llama-3.3-70b-versatile"
+    elif "llama-3.1-8b" in model_choice:
+        selected_model = "llama-3.1-8b-instant"
+    else:
+        selected_model = "mixtral-8x7b-32768"
+    
     # Salvar API keys nas variáveis de ambiente
     if groq_key:
         os.environ["GROQ_API_KEY"] = groq_key
     if tavily_key:
         os.environ["TAVILY_API_KEY"] = tavily_key
+    os.environ["GROQ_MODEL"] = selected_model
     
     st.markdown("---")
     st.markdown("### 📊 Fonte de Dados")
@@ -196,7 +218,9 @@ if data_source == "20 Newsgroups (Amostras)":
                         if "OPENAI_API_KEY" in os.environ:
                             original_openai_key = os.environ.pop("OPENAI_API_KEY", None)
                         
-                        llm = get_llm()
+                        # Usar modelo selecionado
+                        selected_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                        llm = get_llm(model_name=selected_model)
                         analyst = create_analyst_agent(llm)
                         researcher = create_researcher_agent(llm)
                         editor = create_editor_agent(llm)
@@ -226,9 +250,34 @@ if data_source == "20 Newsgroups (Amostras)":
                         status.update(label="✅ Análise concluída!", state="complete")
                     
                     except Exception as e:
-                        status.update(label=f"❌ Erro: {str(e)}", state="error")
-                        st.error(f"❌ Erro durante execução: {e}")
-                        st.exception(e)
+                        error_str = str(e)
+                        status.update(label=f"❌ Erro: {str(e)[:50]}...", state="error")
+                        
+                        # Tratamento especial para rate limit
+                        if "429" in error_str or "rate_limit" in error_str.lower() or "Rate limit" in error_str:
+                            st.error("""
+                            ## ⚠️ Rate Limit Atingido
+                            
+                            Você atingiu o limite diário de tokens do Groq (100,000 tokens/dia no tier gratuito).
+                            
+                            **Soluções:**
+                            
+                            1. **Aguardar:** O limite será resetado em algumas horas (geralmente à meia-noite UTC)
+                            
+                            2. **Usar modelo menor:** Tente usar `llama-3.1-8b-instant` na sidebar - ele consome muito menos tokens
+                            
+                            3. **Upgrade:** Faça upgrade para Dev Tier em https://console.groq.com/settings/billing
+                            
+                            4. **Reduzir prompts:** Os prompts CoT são detalhados e consomem muitos tokens. 
+                               Você pode simplificar temporariamente.
+                            """)
+                            
+                            st.info(f"**Modelo atual:** {os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}")
+                            st.info("💡 **Dica:** Tente novamente com `llama-3.1-8b-instant` - é mais rápido e consome ~10x menos tokens!")
+                        else:
+                            st.error(f"❌ Erro durante execução: {e}")
+                            with st.expander("🔍 Detalhes do Erro"):
+                                st.exception(e)
                         st.stop()
                 
                 # Extrair categoria com parsing robusto

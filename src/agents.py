@@ -8,10 +8,16 @@ from crewai.llm import LLM
 from src.tools import get_tavily_tool
 
 
-def get_llm():
+def get_llm(model_name: str = None):
     """
     Configura e retorna o LLM usando Groq via API compatível com OpenAI.
     O CrewAI usa o LLM wrapper que aceita base_url para usar Groq.
+    
+    Args:
+        model_name: Nome do modelo a usar. Se None, usa o padrão.
+                   Opções: "llama-3.3-70b-versatile" (padrão, melhor qualidade),
+                           "llama-3.1-8b-instant" (mais rápido, menos tokens),
+                           "mixtral-8x7b-32768" (alternativa)
     
     Returns:
         LLM configurado para Groq
@@ -20,11 +26,14 @@ def get_llm():
     if not api_key:
         raise ValueError("GROQ_API_KEY não encontrada nas variáveis de ambiente")
     
+    # Modelo padrão ou o especificado
+    if model_name is None:
+        model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    
     # Usar o LLM do CrewAI configurado para Groq via API compatível com OpenAI
     # Groq oferece uma API compatível em https://api.groq.com/openai/v1
-    # Modelo atualizado: llama-3.3-70b-versatile (substituto do llama-3.1-70b-versatile descontinuado)
     return LLM(
-        model="llama-3.3-70b-versatile",
+        model=model_name,
         api_key=api_key,
         base_url="https://api.groq.com/openai/v1",
         temperature=0.1
