@@ -54,7 +54,8 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
             model=model,
             api_key=api_key,
             base_url="https://api.groq.com/openai/v1",
-            temperature=config.temperature
+            temperature=config.temperature,
+            use_native=False  # Usar LiteLLM para Groq também (mais consistente)
         )
     
     elif provider == "gemini":
@@ -81,11 +82,21 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq") -> LLM:
         
         # O CrewAI LLM vai usar LiteLLM internamente, que suporta Gemini
         # LiteLLM busca GEMINI_API_KEY automaticamente das variáveis de ambiente
-        return LLM(
-            model=gemini_model_name,
-            api_key=api_key,  # Passar também como parâmetro (algumas versões do CrewAI podem precisar)
-            temperature=config.temperature
-        )
+        # Desabilitar provider nativo para forçar uso do LiteLLM
+        try:
+            return LLM(
+                model=gemini_model_name,
+                api_key=api_key,
+                temperature=config.temperature,
+                use_native=False  # Forçar uso do LiteLLM em vez do provider nativo
+            )
+        except TypeError:
+            # Se use_native não for suportado, tentar sem ele
+            return LLM(
+                model=gemini_model_name,
+                api_key=api_key,
+                temperature=config.temperature
+            )
     
     else:
         raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
