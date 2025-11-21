@@ -510,6 +510,38 @@ def inject_custom_css():
     /* ============================================
        14. EXPANDER - Collapsible Sections
        ============================================ */
+    /* Esconder ícones Material Icons quebrados */
+    [class*="material-icons"],
+    [class*="keyboard_double_arrow"],
+    button[aria-label*="keyboard"],
+    .streamlit-expanderHeader [class*="material"],
+    .streamlit-expanderHeader [class*="keyboard"] {
+        display: none !important;
+        visibility: hidden !important;
+        font-size: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    
+    /* Substituir por emoji simples */
+    .streamlit-expanderHeader {
+        position: relative;
+    }
+    
+    .streamlit-expanderHeader[aria-expanded="false"]::before {
+        content: "▶";
+        margin-right: 0.5rem;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+    
+    .streamlit-expanderHeader[aria-expanded="true"]::before {
+        content: "▼";
+        margin-right: 0.5rem;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+    
     .streamlit-expanderHeader {
         background: var(--glass-bg) !important;
         border: 1px solid var(--glass-border) !important;
@@ -774,4 +806,4 @@ def badge(text: str, color: str = "primary"):
         "info": "var(--accent-info)"
     }
     bg_color = colors.get(color, colors["primary"])
-    return f'<span style="background: {bg_color}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">{text}</span>'
+    return f'<span style="background: {bg_color}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">{text}</span>' 
