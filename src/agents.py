@@ -1,6 +1,6 @@
 """
 Definições dos agentes do sistema VerbaFlow.
-Suporta Groq (primário) e Gemini (fallback).
+Suporta Groq como provider principal.
 """
 import os
 from typing import Optional
@@ -9,17 +9,6 @@ from crewai import Agent
 from crewai.llm import LLM
 from src.tools import get_tavily_tool
 from src.config import get_config
-
-# Import opcional do Gemini (pode não estar instalado ou ter conflito de versões)
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    GEMINI_AVAILABLE = True
-except (ImportError, AttributeError) as e:
-    # AttributeError pode ocorrer se houver incompatibilidade de versões
-    # (ex: google-generativeai antiga não tem MediaResolution)
-    GEMINI_AVAILABLE = False
-    import warnings
-    warnings.warn(f"Gemini não está disponível: {e}. Instale versões compatíveis: pip install --upgrade google-generativeai langchain-google-genai")
 
 # Import LiteLLM para verificar disponibilidade
 try:
@@ -31,14 +20,14 @@ except ImportError:
 
 def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
     """
-    Configura e retorna o LLM com suporte a múltiplos provedores.
+    Configura e retorna o LLM usando Groq.
     
     Args:
-        model_name: Nome do modelo a usar. Se None, usa o padrão do provider.
-        provider: "groq" (padrão) ou "gemini" (fallback)
+        model_name: Nome do modelo a usar. Se None, usa o padrão do Groq.
+        provider: "groq" (único provider suportado)
     
     Returns:
-        LLM configurado (CrewAI LLM para Groq, LangChain LLM para Gemini)
+        LLM configurado (CrewAI LLM para Groq)
     
     Raises:
         ValueError: Se as credenciais necessárias não estiverem disponíveis
@@ -48,16 +37,7 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
     if provider == "groq":
         api_key = config.groq_api_key or os.getenv("GROQ_API_KEY")
         if not api_key:
-            # Verificar se há chave do Gemini disponível para fallback
-            gemini_key = (
-                config.google_api_key or 
-                os.getenv("GOOGLE_API_KEY") or 
-                os.getenv("GEMINI_API_KEY")
-            )
-            if config.use_gemini_fallback and gemini_key:
-                # Fallback automático para Gemini
-                return get_llm(model_name=config.gemini_model, provider="gemini")
-            raise ValueError("GROQ_API_KEY não encontrada e fallback Gemini não configurado")
+            raise ValueError("GROQ_API_KEY não encontrada. Configure a chave do Groq no arquivo .env ou na sidebar.")
         
         model = model_name or config.groq_model
         
@@ -68,128 +48,21 @@ def get_llm(model_name: Optional[str] = None, provider: str = "groq"):
             temperature=config.temperature
         )
     
-    elif provider == "gemini":
-        if not GEMINI_AVAILABLE:
-            raise ValueError("Gemini não está disponível. Instale: pip install langchain-google-genai")
-        
-        # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
-        api_key = config.google_api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY ou GEMINI_API_KEY não encontrada nas variáveis de ambiente")
-        
-        model = model_name or config.gemini_model
-        
-        # Normalizar o nome do modelo (remover prefixos se presentes)
-        clean_model = model
-        if clean_model.startswith("gemini/"):
-            clean_model = clean_model.replace("gemini/", "")
-        elif clean_model.startswith("models/"):
-            clean_model = clean_model.replace("models/", "")
-        
-        # Verificar se o provider nativo está instalado
-        try:
-            from crewai.llms.providers.gemini.completion import GeminiCompletion
-            NATIVE_PROVIDER_AVAILABLE = True
-        except ImportError:
-            NATIVE_PROVIDER_AVAILABLE = False
-        
-        # Definir a chave do Google como variável de ambiente
-        os.environ["GEMINI_API_KEY"] = api_key
-        os.environ["GOOGLE_API_KEY"] = api_key
-        
-        # IMPORTANTE: O provider nativo do CrewAI adiciona automaticamente o prefixo "models/"
-        # A API v1beta do Google NÃO suporta modelos Gemini 1.5 (gemini-1.5-pro, gemini-1.5-flash)
-        # Erro: "models/gemini-1.5-flash is not found for API version v1beta"
-        # 
-        # SOLUÇÃO: Para modelos Gemini 1.5, usar "gemini-pro" que é compatível com v1beta
-        # Ou usar LiteLLM que suporta modelos 1.5
-        
-        if NATIVE_PROVIDER_AVAILABLE:
-            # Verificar se é um modelo Gemini 1.5
-            if "1.5" in clean_model:
-                # Modelos Gemini 1.5 NÃO são suportados pela API v1beta do provider nativo
-                # Usar "gemini-pro" como fallback que é compatível
-                gemini_model_name = "gemini-pro"
-            else:
-                # Para modelos sem "1.5" (como gemini-pro), usar o nome original
-                gemini_model_name = clean_model
-        else:
-            # Se não tiver provider nativo, usar formato LiteLLM: "gemini/gemini-1.5-pro"
-            # LiteLLM suporta modelos Gemini 1.5
-            gemini_model_name = f"gemini/{clean_model}"
-        
-        # Usar wrapper LLM do CrewAI
-        try:
-            gemini_llm = LLM(
-                model=gemini_model_name,
-                api_key=api_key,
-                temperature=config.temperature
-            )
-            return gemini_llm
-        except (ImportError, ValueError, Exception) as e:
-            error_str = str(e).lower()
-            # Se o provider nativo tentar ser usado, tentar instalar ou dar erro claro
-            if "google-genai" in error_str or "gemini" in error_str or "native provider" in error_str:
-                # Tentar importar o provider nativo para ver se está disponível
-                try:
-                    from crewai.llms.providers.gemini.completion import GeminiCompletion
-                    # Se chegou aqui, o provider nativo está disponível, mas houve outro erro
-                    raise ValueError(
-                        f"Erro ao configurar Gemini com provider nativo: {e}\n\n"
-                        f"**Tente:**\n"
-                        f"1. Verifique se a chave API está correta\n"
-                        f"2. Aguarde o reset do rate limit do Groq\n"
-                        f"3. Use um modelo menor do Groq (llama-3.1-8b-instant)\n"
-                    )
-                except ImportError:
-                    # Provider nativo não está instalado
-                    raise ValueError(
-                        f"❌ **Provider nativo do Gemini não está instalado**\n\n"
-                        f"O CrewAI está tentando usar o provider nativo do Gemini, mas ele não está instalado.\n"
-                        f"O formato 'gemini/{clean_model}' deveria forçar o uso do LiteLLM, mas o CrewAI "
-                        f"ainda está tentando o provider nativo primeiro.\n\n"
-                        f"**🔧 Soluções:**\n\n"
-                        f"**Opção 1 (Recomendada):** Instale o provider nativo:\n"
-                        f"```bash\n"
-                        f"pip install 'crewai[google-genai]'\n"
-                        f"```\n\n"
-                        f"**Opção 2:** Aguarde o reset do rate limit do Groq (~12 minutos)\n\n"
-                        f"**Opção 3:** Use um modelo menor do Groq que consome menos tokens:\n"
-                        f"- `llama-3.1-8b-instant` (mais rápido, menos tokens)\n"
-                        f"- `mixtral-8x7b-32768` (alternativa)\n\n"
-                        f"**Erro original:** {e}"
-                    )
-            # Re-raise outros erros
-            raise
-    
     else:
-        raise ValueError(f"Provider '{provider}' não suportado. Use 'groq' ou 'gemini'")
+        raise ValueError(f"Provider '{provider}' não suportado. Use apenas 'groq'")
 
 
 def get_llm_with_fallback(model_name: Optional[str] = None) -> LLM:
     """
-    Obtém LLM com fallback automático para Gemini se Groq falhar.
+    Obtém LLM usando Groq (fallback removido).
     
     Args:
         model_name: Nome do modelo (opcional)
     
     Returns:
-        LLM configurado (Groq ou Gemini)
+        LLM configurado (Groq)
     """
-    config = get_config()
-    
-    try:
-        return get_llm(model_name=model_name, provider="groq")
-    except (ValueError, Exception) as e:
-        if config.use_gemini_fallback:
-            try:
-                return get_llm(model_name=config.gemini_model, provider="gemini")
-            except Exception as gemini_error:
-                raise ValueError(
-                    f"Falha ao usar Groq: {e}. "
-                    f"Falha ao usar Gemini (fallback): {gemini_error}"
-                )
-        raise
+    return get_llm(model_name=model_name, provider="groq")
 
 
 def create_analyst_agent(llm):

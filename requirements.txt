@@ -29,14 +29,6 @@ python-dotenv>=1.0.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 
-# Gemini API (Fallback)
-# NOTA: google-generativeai foi removido para evitar conflitos de versões
-# O provider nativo do CrewAI (crewai[google-genai]) usa google-ai-generativelanguage diretamente
-# langchain-google-genai é opcional e pode ter conflitos - use apenas se necessário
-langchain-google-genai>=3.1.0  # Opcional: para usar ChatGoogleGenerativeAI diretamente
-# google-generativeai removido - causa conflito com langchain-google-genai>=3.1.0
-litellm>=1.0.0  # Necessário para CrewAI suportar Gemini
-# Provider nativo do Gemini para CrewAI (opcional, mas recomendado para fallback)
-# Instale com: pip install 'crewai[google-genai]' ou descomente a linha abaixo:
-# crewai[google-genai]>=0.1.0
+# LiteLLM (usado internamente pelo CrewAI)
+litellm>=1.0.0
 

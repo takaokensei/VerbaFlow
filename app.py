@@ -121,8 +121,6 @@ with st.sidebar:
     # Carregar valores do .env como valores padrão
     groq_key_env = os.getenv("GROQ_API_KEY", "")
     tavily_key_env = os.getenv("TAVILY_API_KEY", "")
-    # Aceitar tanto GOOGLE_API_KEY quanto GEMINI_API_KEY
-    google_key_env = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
     
     groq_key = st.text_input(
         "Groq API Key",
@@ -136,22 +134,6 @@ with st.sidebar:
         value=tavily_key_env if tavily_key_env else "",
         type="password",
         help="Chave de API do Tavily (obrigatória para enriquecimento). Se deixar vazio, usa o valor do arquivo .env"
-    )
-    
-    st.markdown("---")
-    st.markdown("### 🔄 Fallback (Opcional)")
-    
-    google_key = st.text_input(
-        "Google API Key (Gemini Fallback)",
-        value=google_key_env if google_key_env else "",
-        type="password",
-        help="Chave de API do Google para Gemini (opcional). Usada como fallback se Groq falhar. Obtenha em: https://makersuite.google.com/app/apikey"
-    )
-    
-    use_fallback = st.checkbox(
-        "Usar Gemini como fallback automático",
-        value=os.getenv("USE_GEMINI_FALLBACK", "true").lower() == "true",
-        help="Se marcado, usa Gemini automaticamente se Groq falhar (rate limit, erro, etc.)"
     )
     
     st.markdown("---")
@@ -187,15 +169,7 @@ with st.sidebar:
     elif tavily_key_env:
         os.environ["TAVILY_API_KEY"] = tavily_key_env
     
-    if google_key:
-        os.environ["GOOGLE_API_KEY"] = google_key
-        os.environ["GEMINI_API_KEY"] = google_key  # Também definir GEMINI_API_KEY para compatibilidade
-    elif google_key_env:
-        os.environ["GOOGLE_API_KEY"] = google_key_env
-        os.environ["GEMINI_API_KEY"] = google_key_env  # Também definir GEMINI_API_KEY para compatibilidade
-    
     os.environ["GROQ_MODEL"] = selected_model
-    os.environ["USE_GEMINI_FALLBACK"] = str(use_fallback).lower()
     
     # Mostrar status das chaves
     st.markdown("---")
@@ -211,14 +185,6 @@ with st.sidebar:
     else:
         st.info("ℹ️ Tavily API Key opcional (enriquecimento não funcionará sem ela)")
     
-    if (google_key_env or google_key) and use_fallback:
-        st.success("✅ Gemini Fallback configurado e ativado")
-    elif use_fallback and not (google_key_env or google_key):
-        st.warning("⚠️ Fallback ativado mas Google API Key não encontrada")
-    elif google_key_env or google_key:
-        st.info("ℹ️ Google API Key configurada mas fallback desativado")
-    else:
-        st.info("ℹ️ Gemini Fallback não configurado (opcional)")
     
     # Histórico de execuções
     st.markdown("---")
@@ -312,7 +278,7 @@ if data_source == "20 Newsgroups (Amostras)":
                         cleaned_text = clean_text(raw_text)
                         
                         # Step 2: Configuração LLM
-                        status.update(label="⚙️ Configurando LLM (tentando Groq, fallback Gemini)...", state="running")
+                        status.update(label="⚙️ Configurando LLM (Groq)...", state="running")
                         if "OPENAI_API_KEY" in os.environ:
                             original_openai_key = os.environ.pop("OPENAI_API_KEY", None)
                         
@@ -320,43 +286,21 @@ if data_source == "20 Newsgroups (Amostras)":
                         llm_provider = "Groq"  # Inicializar variável
                         
                         try:
-                            llm = get_llm_with_fallback(model_name=selected_model)
+                            llm = get_llm(model_name=selected_model)
                             llm_provider = "Groq"
                         except Exception as e:
-                            # Tentar Gemini como fallback se Groq falhar
                             error_str = str(e).lower()
                             is_rate_limit = "429" in error_str or "rate limit" in error_str or "rate_limit" in error_str
                             
-                            config = get_config()
-                            # Verificar se há chave do Gemini disponível (GOOGLE_API_KEY ou GEMINI_API_KEY)
-                            gemini_key_available = (
-                                config.google_api_key or 
-                                os.getenv("GOOGLE_API_KEY") or 
-                                os.getenv("GEMINI_API_KEY")
-                            )
-                            
-                            if config.use_gemini_fallback and gemini_key_available:
-                                try:
-                                    st.warning(f"⚠️ Groq falhou ({e}). Tentando fallback para Gemini...")
-                                    llm = get_llm(provider="gemini")
-                                    llm_provider = "Gemini (Fallback)"
-                                    status.update(label=f"✅ Usando {llm_provider}...", state="running")
-                                    st.success(f"✅ Fallback ativado: usando Gemini em vez de Groq")
-                                except Exception as gemini_error:
-                                    error_msg = f"Falha no Groq: {e}\n\nFalha no Gemini (fallback): {gemini_error}"
-                                    if is_rate_limit:
-                                        error_msg += "\n\n💡 **Sugestões:**\n1. Aguarde alguns minutos e tente novamente\n2. Use um modelo menor (llama-3.1-8b-instant)\n3. Verifique se a chave do Gemini está correta"
-                                    raise ValueError(error_msg)
-                            else:
-                                if is_rate_limit:
-                                    raise ValueError(
-                                        f"Rate limit do Groq atingido: {e}\n\n"
-                                        "💡 **Soluções:**\n"
-                                        "1. Configure o fallback do Gemini na sidebar\n"
-                                        "2. Aguarde alguns minutos\n"
-                                        "3. Use um modelo menor (llama-3.1-8b-instant)"
-                                    )
-                                raise
+                            if is_rate_limit:
+                                raise ValueError(
+                                    f"Rate limit do Groq atingido: {e}\n\n"
+                                    "💡 **Soluções:**\n"
+                                    "1. Aguarde alguns minutos para o rate limit resetar\n"
+                                    "2. Use um modelo menor (llama-3.1-8b-instant) que consome menos tokens\n"
+                                    "3. Verifique seu limite diário de tokens no console do Groq"
+                                )
+                            raise
                         
                         # Step 3: Criar agentes
                         status.update(label="🤖 Criando agentes especializados...", state="running")
