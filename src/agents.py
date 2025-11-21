@@ -10,12 +10,16 @@ from crewai.llm import LLM
 from src.tools import get_tavily_tool
 from src.config import get_config
 
-# Import opcional do Gemini (pode não estar instalado)
+# Import opcional do Gemini (pode não estar instalado ou ter conflito de versões)
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     GEMINI_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError) as e:
+    # AttributeError pode ocorrer se houver incompatibilidade de versões
+    # (ex: google-generativeai antiga não tem MediaResolution)
     GEMINI_AVAILABLE = False
+    import warnings
+    warnings.warn(f"Gemini não está disponível: {e}. Instale versões compatíveis: pip install --upgrade google-generativeai langchain-google-genai")
 
 # Import LiteLLM para verificar disponibilidade
 try:
