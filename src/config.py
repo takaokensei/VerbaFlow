@@ -36,8 +36,8 @@ class VerbaFlowConfig(BaseSettings):
     
     # Configurações de Modelo
     groq_model: str = Field(
-        default="llama-3.3-70b-versatile",
-        description="Modelo Groq a ser usado"
+        default="llama-3.1-8b-instant",  # Modelo mais eficiente em tokens (padrão)
+        description="Modelo Groq a ser usado. Recomendado: llama-3.1-8b-instant (mais eficiente)"
     )
     
     max_retries: int = Field(

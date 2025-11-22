@@ -1,29 +1,35 @@
-For sale
---------
+I will take $375 for the whole package.  Original post follows:
 
-STR-AV1070 Audio Receiver
--------------------------
-120 Watts per channel
-Dolby Surround sound with Pro Logic
-Learning Programmable remote
-10 Watts per channel for surround sound
-Supports Dual Room Link Control (to hear another source in a different room)
-Index filing of all radio stations
-7 band equilizer with real-time analyzer
+----------------------------------------------------------------------------
 
-I need to get $450 for this unit or best offer.
+Article: 61358 of misc.forsale
+Newsgroups: misc.forsale,misc.forsale.computers
+From: wgs1@Isis.MsState.Edu (Walter G. Seefeld)
+Subject: SyQuest internal 44 drive with 8 cartridges: sale or trade
+Summary: Will trade 350Mb for ~300Mb IDE, or sell for $450
+Organization: Mississippi State University
+Distribution: na
+Date: Tue, 20 Apr 1993 18:48:06 GMT
 
-CDP-C910 Sony ten disc changer
-------------------------------
-Ten disc cartridge
-Custom File of your favorite program or title or volume for each disc
-		(Up to 184 disc memory!)
-Remote control
-Fixed and Variable volume outputs
-Optical output
-8x Oversampling rate
+This drive is less than one year old.  The cartridges have all been bought
+since then.  All is in excellent condition and still under warranty.
+Due to a change in system use, I now need a large, contiguous drive.
 
-$325 firm.
+Offer includes:
+	SyDos 44i internal drive
+	SCSI adapter card and cables
+	All original documentation
+	Software
+	All original packaging
+	8 cartridges totalling over 350Mb (no bad sectors or defects)
 
-I purchased these items about 6 months ago and need to sell them now to
-buy a house.  Both units are in immaculate shape and are priced to move.
+The installation was a breeze on my 386 clone.
+
+I will trade for something near 300Mb IDE, or sell for $450.
+I will also consider trading for 4 4Mx9 30 pin SIMMs at 70ns.
+--
+Walter G. Seefeld          |  By the dawn's early light,
+940 N. Jackson St. #1A     |  By all I know is right,
+Starkville, MS 39759       |  We're going to reap what we have sown.
+N5QXR                      |   -Jackson Brown 
+

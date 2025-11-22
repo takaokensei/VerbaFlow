@@ -21,7 +21,7 @@ import streamlit as st
 def inject_custom_css():
     """
     Sistema de CSS avançado com Glassmorphism e Dark Theme profissional.
-    Compatível com Streamlit 1.28+
+    Corrigido para o bug do ícone da sidebar no Streamlit 1.40+.
     """
     css = """
     <style>
@@ -30,6 +30,7 @@ def inject_custom_css():
        ============================================ */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0');
 
     /* ============================================
        2. CSS VARIABLES - Design Tokens
@@ -156,11 +157,17 @@ def inject_custom_css():
     }
 
     /* Body text - Inter */
+    /* NOTA: Excluímos elementos com classes de ícone material para evitar o bug */
     body, p, div, span, label, li,
     .stMarkdown, .stMarkdown p {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        color: var(--text-primary) !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text-primary);
         line-height: 1.6;
+    }
+    
+    /* Garante que ícones usem a fonte correta */
+    .material-icons, .material-icons-outlined, .material-icons-round {
+        font-family: 'Material Icons' !important;
     }
 
     /* Code - JetBrains Mono */
@@ -172,8 +179,9 @@ def inject_custom_css():
        6. SIDEBAR - Light Theme with Glass
        ============================================ */
     [data-testid="stSidebar"] {
-        background: var(--sidebar-bg) !important;
+        background-color: var(--sidebar-bg) !important;
         border-right: 1px solid var(--sidebar-border) !important;
+        transition: background-color var(--transition-base), border-color var(--transition-base);
     }
 
     [data-testid="stSidebar"]::before {
@@ -187,7 +195,6 @@ def inject_custom_css():
         pointer-events: none;
     }
 
-    /* Sidebar text - DARK on light background */
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3,
@@ -205,7 +212,6 @@ def inject_custom_css():
         color: var(--sidebar-text-secondary) !important;
     }
 
-    /* Sidebar headings */
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {
@@ -216,7 +222,6 @@ def inject_custom_css():
     /* ============================================
        7. INPUT COMPONENTS - Glassmorphism Style
        ============================================ */
-    /* Text inputs & textareas */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stNumberInput > div > div > input {
@@ -244,7 +249,6 @@ def inject_custom_css():
         -webkit-text-fill-color: var(--text-tertiary) !important;
     }
 
-    /* Sidebar inputs - Light theme */
     [data-testid="stSidebar"] .stTextInput > div > div > input,
     [data-testid="stSidebar"] .stTextArea > div > div > textarea {
         background: var(--sidebar-input-bg) !important;
@@ -258,7 +262,6 @@ def inject_custom_css():
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
     }
 
-    /* Labels */
     .stTextInput label,
     .stTextArea label,
     .stSelectbox label,
@@ -287,7 +290,6 @@ def inject_custom_css():
         color: var(--text-primary) !important;
     }
 
-    /* Dropdown menu */
     [data-baseweb="popover"] {
         background: var(--bg-surface-3) !important;
         border: 1px solid var(--glass-border) !important;
@@ -308,7 +310,6 @@ def inject_custom_css():
         background: var(--glass-bg-hover) !important;
     }
 
-    /* Sidebar selectbox */
     [data-testid="stSidebar"] .stSelectbox > div > div {
         background: var(--sidebar-input-bg) !important;
         border-color: var(--sidebar-border) !important;
@@ -362,7 +363,6 @@ def inject_custom_css():
         transform: translateY(0) !important;
     }
 
-    /* Secondary buttons */
     .stButton > button[kind="secondary"] {
         background: var(--glass-bg) !important;
         border: 1px solid var(--glass-border) !important;
@@ -386,27 +386,23 @@ def inject_custom_css():
         padding: 1rem 1.25rem !important;
     }
 
-    /* Success */
     .stAlert[data-baseweb="notification"][kind="positive"],
     .element-container:has(.stSuccess) .stAlert {
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%) !important;
         border-left: 4px solid var(--accent-success) !important;
     }
 
-    /* Error */
     .stAlert[data-baseweb="notification"][kind="negative"],
     .element-container:has(.stError) .stAlert {
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%) !important;
         border-left: 4px solid var(--accent-error) !important;
     }
 
-    /* Warning */
     .stAlert[data-baseweb="notification"][kind="warning"] {
         background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%) !important;
         border-left: 4px solid var(--accent-warning) !important;
     }
 
-    /* Info */
     .stAlert[data-baseweb="notification"][kind="info"] {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%) !important;
         border-left: 4px solid var(--accent-info) !important;
@@ -510,21 +506,14 @@ def inject_custom_css():
     /* ============================================
        14. EXPANDER - Collapsible Sections
        ============================================ */
-    /* Esconder ícones Material Icons quebrados APENAS dentro de expanders */
-    /* IMPORTANTE: NÃO afetar o sidebar toggle [data-testid="collapsedControl"] */
     .streamlit-expanderHeader [class*="material-icons"]:not([data-testid="collapsedControl"] *),
     .streamlit-expanderHeader [class*="keyboard_double_arrow"]:not([data-testid="collapsedControl"] *),
     .streamlit-expanderHeader button[aria-label*="keyboard"]:not([data-testid="collapsedControl"]),
     .streamlit-expanderHeader [class*="material"]:not([data-testid="collapsedControl"] *),
     .streamlit-expanderHeader [class*="keyboard"]:not([data-testid="collapsedControl"] *) {
         display: none !important;
-        visibility: hidden !important;
-        font-size: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
     }
     
-    /* Substituir por emoji simples */
     .streamlit-expanderHeader {
         position: relative;
     }
@@ -624,7 +613,7 @@ def inject_custom_css():
     }
 
     /* ============================================
-       19. SCROLLBAR - Custom Styling
+       19. SCROLLBAR
        ============================================ */
     ::-webkit-scrollbar {
         width: 8px;
@@ -651,91 +640,71 @@ def inject_custom_css():
     footer {visibility: hidden;}
     
     /* ============================================
-       20.1. SIDEBAR TOGGLE - Ensure Visibility
+       20.1. FIX CRÍTICO DA SIDEBAR TOGGLE
        ============================================ */
-    /* Garantir que o botão de toggle da sidebar seja sempre visível */
-    [data-testid="collapsedControl"],
-    button[data-testid="collapsedControl"],
-    [data-testid="collapsedControl"] button {
+    
+    /* Container do botão de toggle (expandido e recolhido) */
+    button[data-testid="stSidebarNavCollapseButton"],
+    [data-testid="stSidebarCollapsedControl"] {
         display: flex !important;
-        visibility: visible !important;
-        color: var(--text-primary) !important;
-        opacity: 1 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+        color: var(--sidebar-text) !important;
+        z-index: 1000002 !important; /* Fica acima de tudo */
     }
-    
-    [data-testid="collapsedControl"] svg,
-    button[data-testid="collapsedControl"] svg {
+
+    button[data-testid="stSidebarNavCollapseButton"]:hover,
+    [data-testid="stSidebarCollapsedControl"]:hover {
+        color: var(--accent-primary) !important;
+        background: rgba(0,0,0,0.05) !important;
+        border-radius: 50%;
+    }
+
+    /* FIX 1: Se for SVG (Versões novas do Streamlit), forçar visibilidade e cor */
+    button[data-testid="stSidebarNavCollapseButton"] > svg,
+    [data-testid="stSidebarCollapsedControl"] > svg {
         display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        width: 24px !important;
-        height: 24px !important;
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        fill: currentColor !important;
+    }
+
+    /* FIX 2: Se for Texto/Span (Bug do "keyboard_double_arrow_right") */
+    /* Esconde o span que contém o texto bugado se ele não puder ser renderizado como ícone */
+    button[data-testid="stSidebarNavCollapseButton"] > span,
+    [data-testid="stSidebarCollapsedControl"] > span {
+        /* Tenta forçar a fonte Material Icons caso seja texto */
+        font-family: 'Material Symbols Rounded', 'Material Icons', monospace !important;
+        font-size: 1.5rem !important;
+        font-weight: normal !important;
+        /* Se mesmo assim falhar (devido ao conteúdo ser texto literal), podemos esconder: */
+        /* Para esconder totalmente o texto bugado, descomente a linha abaixo: */
+        /* font-size: 0 !important; */
     }
     
-    /* Garantir que Material Icons e texto dentro do sidebar toggle NÃO sejam escondidos */
-    [data-testid="collapsedControl"] span,
-    button[data-testid="collapsedControl"] span,
-    button[aria-label*="sidebar"] span {
-        display: inline-block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        font-size: 24px !important;
-        width: auto !important;
-        height: auto !important;
-        color: var(--text-primary) !important;
-        font-family: 'Material Icons' !important;
-    }
-    
-    /* Garantir que texto "keyboard_double_arrow_right" seja renderizado como Material Icon */
-    [data-testid="collapsedControl"],
-    button[data-testid="collapsedControl"],
-    button[aria-label*="sidebar"],
-    button[aria-label*="Close sidebar"],
-    button[aria-label*="Open sidebar"] {
-        font-family: 'Material Icons', sans-serif !important;
+    /* Se houver SVG E Span (transição), esconde o span */
+    button[data-testid="stSidebarNavCollapseButton"]:has(svg) > span,
+    [data-testid="stSidebarCollapsedControl"]:has(svg) > span {
+        display: none !important;
     }
 
     /* ============================================
-       21. ANIMATIONS & MICRO-INTERACTIONS
+       21. ANIMATIONS & UTILS
        ============================================ */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-
-    @keyframes shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-    }
-
     .animate-fade-in {
         animation: fadeIn 0.5s ease-out;
     }
-
-    .animate-pulse {
-        animation: pulse 2s infinite;
-    }
-
-    /* Skeleton loading effect */
-    .skeleton {
-        background: linear-gradient(90deg, var(--bg-surface-2) 25%, var(--bg-surface-3) 50%, var(--bg-surface-2) 75%);
-        background-size: 200% 100%;
-        animation: shimmer 1.5s infinite;
-        border-radius: var(--radius-md);
-    }
-
-    /* ============================================
-       22. UTILITY CLASSES
-       ============================================ */
+    
     .glass-card {
         background: var(--glass-bg);
         backdrop-filter: blur(var(--glass-blur));
-        -webkit-backdrop-filter: blur(var(--glass-blur));
         border: 1px solid var(--glass-border);
         border-radius: var(--radius-lg);
         padding: 1.5rem;
@@ -747,15 +716,55 @@ def inject_custom_css():
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
+    
+    /* Cabeçalho principal */
+    .main-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
 
-    .glow {
-        box-shadow: var(--shadow-glow);
+    .main-header h1 {
+        font-family: 'Space Grotesk', serif !important;
+        font-size: 3.5rem !important;
+        font-weight: 700 !important;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .main-header p {
+        font-family: 'Inter', sans-serif !important;
+        font-size: 1.1rem !important;
+        color: var(--text-secondary) !important;
+        font-weight: 400;
+        margin-top: 0;
+    }
+    
+    .success-indicator {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #34d399;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .error-indicator {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        text-align: center;
+        margin-bottom: 1rem;
     }
 
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-
 
 def apply_page_config():
     """
@@ -845,4 +854,4 @@ def badge(text: str, color: str = "primary"):
         "info": "var(--accent-info)"
     }
     bg_color = colors.get(color, colors["primary"])
-    return f'<span style="background: {bg_color}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">{text}</span>' 
+    return f'<span style="background: {bg_color}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;">{text}</span>'

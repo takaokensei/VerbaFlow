@@ -98,17 +98,11 @@ def extract_category_robust(text: str) -> str:
     return ""
 
 
-# Título principal com tipografia elegante
+# Título principal com estilo centralizado
 st.markdown("""
-<div style="text-align: center; margin-bottom: 2rem;">
-    <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.5rem; font-weight: 600; 
-               color: #1A1A1A; letter-spacing: -0.02em; margin-bottom: 0.5rem;">
-        VerbaFlow
-    </h1>
-    <p style="font-family: 'Inter', sans-serif; font-size: 1.1rem; color: #666666; 
-              font-weight: 400; margin-top: 0;">
-        Sistema Multi-Agente para Classificação e Enriquecimento de Textos
-    </p>
+<div class="main-header">
+    <h1>VerbaFlow</h1>
+    <p>Sistema Multi-Agente para Classificação e Enriquecimento de Textos</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -139,21 +133,32 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🤖 Modelo Groq")
     
+    # Aviso sobre rate limit
+    st.warning("""
+    ⚠️ **Limite de Tokens do Groq:**
+    
+    - **Tier Gratuito:** 100,000 tokens/dia
+    - **Recomendado:** `llama-3.1-8b-instant` (consome ~10x menos tokens)
+    - **Upgrade:** https://console.groq.com/settings/billing
+    
+    💡 **Dica:** O modelo `llama-3.1-8b-instant` é rápido, eficiente e tem qualidade excelente para classificação!
+    """)
+    
     model_choice = st.selectbox(
         "Selecione o modelo:",
         [
+            "llama-3.1-8b-instant (Recomendado: Mais rápido, menos tokens) ⭐",
             "llama-3.3-70b-versatile (Melhor qualidade, mais tokens)",
-            "llama-3.1-8b-instant (Mais rápido, menos tokens)",
             "mixtral-8x7b-32768 (Alternativa)"
         ],
-        help="Modelos menores consomem menos tokens e são mais rápidos"
+        help="💡 Modelos menores consomem muito menos tokens! Use llama-3.1-8b-instant para evitar rate limits."
     )
     
     # Extrair nome do modelo
-    if "llama-3.3-70b" in model_choice:
-        selected_model = "llama-3.3-70b-versatile"
-    elif "llama-3.1-8b" in model_choice:
+    if "llama-3.1-8b" in model_choice:
         selected_model = "llama-3.1-8b-instant"
+    elif "llama-3.3-70b" in model_choice:
+        selected_model = "llama-3.3-70b-versatile"
     else:
         selected_model = "mixtral-8x7b-32768"
     
@@ -282,7 +287,7 @@ if data_source == "20 Newsgroups (Amostras)":
                         if "OPENAI_API_KEY" in os.environ:
                             original_openai_key = os.environ.pop("OPENAI_API_KEY", None)
                         
-                        selected_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                        selected_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
                         llm_provider = "Groq"  # Inicializar variável
                         
                         try:
@@ -296,9 +301,9 @@ if data_source == "20 Newsgroups (Amostras)":
                                 raise ValueError(
                                     f"Rate limit do Groq atingido: {e}\n\n"
                                     "💡 **Soluções:**\n"
-                                    "1. Aguarde alguns minutos para o rate limit resetar\n"
-                                    "2. Use um modelo menor (llama-3.1-8b-instant) que consome menos tokens\n"
-                                    "3. Verifique seu limite diário de tokens no console do Groq"
+                                    "1. Troque para modelo menor (llama-3.1-8b-instant) na sidebar - consome ~10x menos tokens\n"
+                                    "2. Aguarde o reset do limite (geralmente à meia-noite UTC)\n"
+                                    "3. Faça upgrade para Dev Tier: https://console.groq.com/settings/billing"
                                 )
                             raise
                         
@@ -330,7 +335,8 @@ if data_source == "20 Newsgroups (Amostras)":
                             agents=[analyst, researcher, editor],
                             tasks=[task1, task2, task3],
                             process=Process.sequential,
-                            verbose=True
+                            verbose=True,
+                            tracing=True  # Ativar tracing do CrewAI
                         )
                         
                         # Step 5: Executar Task 1 - Classificação
@@ -340,7 +346,15 @@ if data_source == "20 Newsgroups (Amostras)":
                         
                         result = None
                         try:
+                            # Executar crew com tracing ativado
+                            st.info("🔍 **Tracing ativado:** Acompanhe o progresso detalhado do CrewAI...")
                             result = crew.kickoff()
+                            
+                            # Capturar output do tracing após execução
+                            output = sys.stdout.getvalue()
+                            if output and len(output.strip()) > 0:
+                                with st.expander("📊 Detalhes do Tracing (CrewAI)", expanded=False):
+                                    st.code(output, language="text")
                         except Exception as crew_error:
                             error_str = str(crew_error)
                             # Verificar se é rate limit
@@ -353,21 +367,50 @@ if data_source == "20 Newsgroups (Amostras)":
                             
                             # Se for rate limit, mostrar mensagem de erro
                             if is_rate_limit:
+                                # Extrair tempo de espera se disponível
+                                wait_time = "algumas horas"
+                                if "try again in" in error_str.lower():
+                                    import re
+                                    time_match = re.search(r'try again in (\d+m\d+\.\d+s)', error_str, re.IGNORECASE)
+                                    if time_match:
+                                        wait_time = time_match.group(1)
+                                
                                 # Rate limit atingido - mostrar mensagem de erro
                                 st.error("""
                                 ## ⚠️ Rate Limit Atingido
                                 
                                 Você atingiu o limite diário de tokens do Groq (100,000 tokens/dia no tier gratuito).
                                 
-                                **Soluções:**
+                                **📊 Informações:**
+                                - Limite: 100,000 tokens/dia (tier gratuito)
+                                - Modelo atual: """ + f"{os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')}" + """
+                                - Tempo estimado para reset: """ + wait_time + """
                                 
-                                1. **Aguardar:** O limite será resetado em algumas horas (geralmente à meia-noite UTC)
+                                **💡 Soluções Imediatas:**
                                 
-                                2. **Usar modelo menor:** Tente usar `llama-3.1-8b-instant` na sidebar - ele consome muito menos tokens
+                                1. **Trocar para modelo menor:** 
+                                   - Vá na sidebar e selecione `llama-3.1-8b-instant`
+                                   - Este modelo consome **~10x menos tokens** que o 70b
+                                   - Qualidade ainda é excelente para classificação
                                 
-                                3. **Upgrade:** Faça upgrade para Dev Tier em https://console.groq.com/settings/billing
+                                2. **Aguardar reset:** 
+                                   - O limite será resetado automaticamente (geralmente à meia-noite UTC)
+                                   - Tempo estimado: """ + wait_time + """
+                                
+                                3. **Upgrade para Dev Tier:**
+                                   - Limite muito maior (30M tokens/dia)
+                                   - Acesso a modelos premium
+                                   - https://console.groq.com/settings/billing
+                                
+                                **🎯 Recomendação:** Use `llama-3.1-8b-instant` como padrão - é rápido, eficiente e tem qualidade excelente!
                                 """)
-                                st.info(f"**Modelo atual:** {os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}")
+                                
+                                # Botão para trocar modelo automaticamente
+                                if st.button("🔄 Trocar para llama-3.1-8b-instant agora", type="primary"):
+                                    os.environ["GROQ_MODEL"] = "llama-3.1-8b-instant"
+                                    st.success("✅ Modelo alterado! Recarregue a página e tente novamente.")
+                                    st.rerun()
+                                
                                 status.update(label=f"❌ Erro: Rate limit", state="error")
                                 st.stop()
                             else:
@@ -454,14 +497,15 @@ if data_source == "20 Newsgroups (Amostras)":
                 
                 with col_left:
                     st.markdown("### 📄 Texto Original")
-                    st.markdown(f"""
-                    <div style="background-color: #F5F5F5; padding: 1.5rem; border-radius: 8px; 
-                                border-left: 4px solid #4A90E2; max-height: 400px; overflow-y: auto;">
-                        <p style="font-family: 'Inter', monospace; font-size: 0.9rem; line-height: 1.6; 
-                                  color: #1A1A1A; white-space: pre-wrap;">{raw_text[:1000]}{'...' if len(raw_text) > 1000 else ''}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
+                    # Usando st.text_area que é mais semântico e permite rolagem nativa
+                    st.text_area(
+                        "Texto Original",
+                        raw_text,
+                        height=300,
+                        disabled=True,
+                        label_visibility="collapsed"
+                    )
+
                     st.markdown(f"**🏷️ Categoria Real (Ground Truth):**")
                     st.markdown(f'<span class="category-badge">{ground_truth}</span>', unsafe_allow_html=True)
                 
@@ -472,18 +516,10 @@ if data_source == "20 Newsgroups (Amostras)":
                     is_correct = predicted_category.lower() == ground_truth.lower() if predicted_category else False
                     
                     if is_correct:
-                        st.markdown("""
-                        <div class="success-indicator">
-                            ✅ Classificação Correta!
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown('<div class="success-indicator">✅ Classificação Correta!</div>', unsafe_allow_html=True)
                         st.balloons()
                     else:
-                        st.markdown("""
-                        <div class="error-indicator">
-                            ❌ Classificação Incorreta
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown('<div class="error-indicator">❌ Classificação Incorreta</div>', unsafe_allow_html=True)
                     
                     # Métricas
                     st.metric("Categoria Real", ground_truth)
@@ -491,15 +527,47 @@ if data_source == "20 Newsgroups (Amostras)":
                 
                 # Relatório completo em seção expandível
                 st.markdown("---")
+                
+                # Extrair markdown do relatório se disponível
+                report_markdown = None
+                try:
+                    # Tentar extrair JSON do resultado
+                    json_pattern = r'\{[^{}]*"full_report_markdown"[^{}]*\}'
+                    json_match = re.search(json_pattern, result_str, re.DOTALL | re.IGNORECASE)
+                    if json_match:
+                        try:
+                            data = json.loads(json_match.group(0))
+                            if 'full_report_markdown' in data:
+                                report_markdown = data['full_report_markdown']
+                        except json.JSONDecodeError:
+                            # Tentar buscar JSON completo
+                            json_full_pattern = r'\{.*?"full_report_markdown".*?\}'
+                            json_full_match = re.search(json_full_pattern, result_str, re.DOTALL | re.IGNORECASE)
+                            if json_full_match:
+                                try:
+                                    data = json.loads(json_full_match.group(0))
+                                    if 'full_report_markdown' in data:
+                                        report_markdown = data['full_report_markdown']
+                                except json.JSONDecodeError:
+                                    pass
+                except Exception:
+                    pass
+                
                 # Usar HTML customizado para evitar problema de ícone
                 st.markdown("""
-                <details open style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                    <summary style="font-weight: 600; font-size: 1.1rem; cursor: pointer; padding: 0.5rem;">
+                <details open style="background-color: #1e1e1e; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid rgba(255,255,255,0.1);">
+                    <summary style="font-weight: 600; font-size: 1.1rem; cursor: pointer; padding: 0.5rem; color: #FFFFFF;">
                         📋 Relatório Enriquecido Completo
                     </summary>
-                    <div style="margin-top: 1rem; padding: 1rem; background-color: white; border-radius: 4px;">
+                    <div style="margin-top: 1rem; padding: 1rem; background-color: #121212; border-radius: 4px; color: #FFFFFF;">
                 """, unsafe_allow_html=True)
-                st.markdown(result_str)
+                
+                # Renderizar markdown se disponível, senão mostrar resultado completo
+                if report_markdown:
+                    st.markdown(report_markdown)
+                else:
+                    st.markdown(result_str)
+                
                 st.markdown("""
                     </div>
                 </details>
@@ -583,4 +651,3 @@ else:  # CSV Customizado
                 st.info("Colunas encontradas: " + ", ".join(df.columns.tolist()))
         else:
             st.error("❌ Erro ao carregar CSV ou arquivo vazio.")
-

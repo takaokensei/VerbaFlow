@@ -1,19 +1,14 @@
+After setting up a very large (>4 pages) table in Word for Windows
+I asked word to print it to my HP laserjet II -- worked fine at first.
+After much editing of the table contents (but not structure) output
+requests now kick the LJ into manual feed mode for the document
+containing the table.  Other documents without tables print correctly.
 
+Where should I look and what should I change to get the document with
+the long table to use the paper drawer rather than kick into manual
+feed mode? [I believe I've tried all the obvious printer manager changes
+as well as replacing the hppcl.[lp]00 files with archived versions.]
 
+Thanks for any and all help.
 
-
-Hey, sounds great. Does that mean that W4WG works with ODI? I thought it    
-uses NDIS.                                                                  
-                                                                            
-My problem is that Lan Workplace with all its drivers uses up most of my    
-UMBs, so I'd hate to have to load many more drivers to make W4WG work       
-along.                                                                     
-                                                                           
-I read in a German computer magazine that TCP/IP support for W4WG is just  
-around the corner. Anybody have any news about this?                       
-                                                                           
-Regards, Richard                                                           
-
-PS: I possibly caused a dupe with this message. If this message was spread
-twice outside of Munich, please send me a short note. It would help
-me debug my news application.
+Peter
